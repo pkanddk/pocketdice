@@ -1,0 +1,14 @@
+// The image will be saved in the public directory
+const fs = require('node:fs');
+const path = require('node:path');
+
+const imagePath = path.join(__dirname, 'public', 'jerry-cartoon.jpeg');
+
+if (!fs.existsSync(imagePath)) {
+  // Assuming 'imageBuffer' contains the image data from earlier
+  fs.writeFileSync(imagePath, imageBuffer); 
+  console.log('jerry-cartoon.jpeg created in public directory');
+} else {
+  console.log('jerry-cartoon.jpeg already exists in public directory');
+}
+
