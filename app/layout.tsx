@@ -1,4 +1,5 @@
 import ErrorBoundary from '../components/ErrorBoundary';
+import { Navbar } from "@/components/Navbar";
 
 export default function RootLayout({
   children,
@@ -8,8 +9,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <Navbar />
         <ErrorBoundary fallback={<div>Something went wrong. Please try refreshing the page.</div>}>
-          {children}
+          <main>{children}</main>
         </ErrorBoundary>
       </body>
     </html>

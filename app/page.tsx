@@ -8,6 +8,7 @@ import { Input } from '../components/ui/input'
 import { Dice3, Users } from 'lucide-react'
 import { Card, CardContent } from "../components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
+import { GameModeSelector } from '@/components/GameModeSelector'
 
 export default function HomePage() {
   const router = useRouter()
@@ -59,6 +60,10 @@ export default function HomePage() {
     setPlayerNames(newNames)
   }
 
+  const handleSelectGameMode = (mode: string) => {
+    setGameMode(mode);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12 flex flex-col">
       <motion.div 
@@ -101,36 +106,7 @@ export default function HomePage() {
               Select game mode
             </h2>
             
-            <div className="relative">
-              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                <Users className="h-5 w-5 text-blue-500" />
-              </div>
-              <Select onValueChange={(value) => setGameMode(value)} defaultValue="single"> 
-                <SelectTrigger className="pl-10 h-auto py-3 text-lg rounded-full border-blue-200 bg-blue-50/50 hover:bg-blue-50 focus:border-blue-500 focus:ring-blue-500">
-                  <SelectValue placeholder="Choose game mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="single">
-                    <div className="flex flex-col items-start text-left">
-                      <span className="font-semibold">Dice Against the Machine</span>
-                      <span className="text-sm text-gray-500">You vs. the CPU</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="score-card">
-                    <div className="flex flex-col items-start text-left">
-                      <span className="font-semibold">Old School</span>
-                      <span className="text-sm text-gray-500">A score card for people with dice!</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="duel">
-                    <div className="flex flex-col items-start text-left">
-                      <span className="font-semibold">Digital Dice</span>
-                      <span className="text-sm text-gray-500">Full game, dice included.</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <GameModeSelector onSelectGameMode={handleSelectGameMode} />
 
             {(gameMode === 'score-card' || gameMode === 'duel') && (
               <div className="relative mt-4">
