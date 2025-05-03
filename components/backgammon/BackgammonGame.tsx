@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { getThemeStyle } from "@/utils/theme-styles"
 import { BoardPoint } from './board-point'
 import { BackgammonRules } from './game-logic'
-import { Player, BoardState, BarState, GameState, Move, DiceRoll, BorneOffState } from './types'
+import { Player, BoardState, BarState, GameState, Move, DiceRoll, BorneOffState, PointState } from './types'
 
 // Import the cultural backgrounds
 import { culturalBackgrounds } from "@/utils/cultural-backgrounds"
@@ -127,11 +127,14 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   const themeStyle = getThemeStyle(theme);
   const [gameNumber, setGameNumber] = useState(1);
   const [seriesWinner, setSeriesWinner] = useState<Player | null>(null);
-
-  // Force render state to handle updates
+  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const [forceRender, setForceRender] = useState(0);
 
-  // Force board reset when game starts
+  // New state for "no moves available" feedback
+  const [showNoMovesFeedback, setShowNoMovesFeedback] = useState(false);
+  const noMovesTimerRef = useRef<NodeJS.Timeout | null>(null); // Ref to manage the feedback timer
+
+  // Force render state to handle updates
   useEffect(() => {
     if (gameState.gameStarted) {
       debugLog("Game started - Resetting state", null);
@@ -350,6 +353,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
         dice: [...newDice],
         remainingDice: [...newDice],
         isRolling: false,
+        diceRolled: true,
         mustUseAllDice: true
       }));
     }, 1000);
@@ -366,8 +370,16 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
       dice: [],
       remainingDice: [],
       mustUseAllDice: true,
-      isRolling: false
+      isRolling: false,
+      diceRolled: false
     }));
+    // Clear selection and feedback state explicitly on switch
+    setSelectedPointIndex(null);
+    setShowNoMovesFeedback(false);
+    if (noMovesTimerRef.current) {
+      clearTimeout(noMovesTimerRef.current);
+      noMovesTimerRef.current = null;
+    }
   }, [gameState.currentPlayer]);
 
   /**
@@ -608,31 +620,76 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     checkWin(2);
   }, [gameState.board, gameState.bar, gameState.borneOff, gameState.gameStarted]);
 
-  // EFFECT: Check ONLY for the "stuck" condition (has dice but no moves)
+  // useEffect to reset selection and clear "no moves" feedback
+  useEffect(() => {
+    debugLog("Player/Dice changed, deselecting point & clearing feedback", { currentPlayer: gameState.currentPlayer, remainingDice: gameState.remainingDice });
+    setSelectedPointIndex(null);
+    setShowNoMovesFeedback(false); // Clear feedback on player/dice change
+    if (noMovesTimerRef.current) {
+      clearTimeout(noMovesTimerRef.current);
+      noMovesTimerRef.current = null;
+    }
+  }, [gameState.currentPlayer, gameState.remainingDice]);
+
+  // EFFECT: Check for "stuck" condition (has dice but no moves) & trigger feedback/switch
   useEffect(() => {
     const currentPlayer = gameState.currentPlayer;
-    console.log(`[Debug useEffect RUN] Curr: ${currentPlayer}, Dice: [${gameState.remainingDice.join(',')}]`);
+    // console.log(`[Debug useEffect RUN - Stuck Check] Curr: ${currentPlayer}, Rolled: ${gameState.diceRolled}, Dice: [${gameState.remainingDice.join(',')}]`);
 
-    // Don't run checks if game not started or dice are rolling OR if dice are empty
-    if (!gameState.gameStarted || gameState.isRolling || gameState.remainingDice.length === 0) {
+    // Only run if the game is started, dice ARE rolled for the turn, and not currently rolling/switching
+    if (!gameState.gameStarted || !gameState.diceRolled || gameState.isRolling || gameState.remainingDice.length === 0) {
+       // Ensure feedback is off if conditions aren't met
+       if (showNoMovesFeedback) setShowNoMovesFeedback(false);
+       if (noMovesTimerRef.current) {
+           clearTimeout(noMovesTimerRef.current);
+           noMovesTimerRef.current = null;
+       }
       return;
     }
 
     // Player HAS dice, check if they are stuck
     const availableMoves = BackgammonRules.getAvailableMoves({
         ...gameState,
-        dice: gameState.remainingDice
+        dice: gameState.remainingDice // Check based on remaining dice
     });
-    console.log(`[Debug] Found ${availableMoves.length} available moves for Player ${currentPlayer} with dice [${gameState.remainingDice.join(", ")}]`);
+    // console.log(`[Debug Stuck Check] Found ${availableMoves.length} available moves for Player ${currentPlayer} with dice [${gameState.remainingDice.join(", ")}]`);
 
     if (availableMoves.length === 0) {
-        console.log(`[Debug useEffect] Turn should end for Player ${currentPlayer} (No available moves). Switching player.`);
-        const timer = setTimeout(() => { switchPlayer(); }, 200);
-        return () => clearTimeout(timer);
+        // Only start the feedback/switch process if it's not already running
+        if (!noMovesTimerRef.current && !showNoMovesFeedback) {
+            console.log(`[Debug Stuck Check] No available moves for Player ${currentPlayer}. Starting feedback & switch timer.`);
+            setShowNoMovesFeedback(true); // Show feedback immediately
+
+            // Set a timer to switch player after feedback duration
+            noMovesTimerRef.current = setTimeout(() => {
+                console.log(`[Debug Stuck Check] Timer finished. Switching player ${currentPlayer}.`);
+                switchPlayer();
+                // No need to setShowNoMovesFeedback(false) here, switchPlayer's useEffect handles it
+                noMovesTimerRef.current = null; // Clear the ref after timer executes
+            }, 1500); // Show feedback for 1.5 seconds before switching
+        }
+    } else {
+        // Moves ARE available, ensure feedback is off and timer is cleared
+        if (showNoMovesFeedback) setShowNoMovesFeedback(false);
+        if (noMovesTimerRef.current) {
+            console.log(`[Debug Stuck Check] Moves available. Clearing switch timer for player ${currentPlayer}.`);
+            clearTimeout(noMovesTimerRef.current);
+            noMovesTimerRef.current = null;
+        }
     }
 
-  // Dependencies: Only need to run when things potentially affecting moves change WHILE dice exist.
-  }, [gameState.remainingDice, gameState.currentPlayer, gameState.board, gameState.bar, gameState.gameStarted, gameState.isRolling, switchPlayer]);
+    // Cleanup function to clear timer if dependencies change before timeout
+    return () => {
+        if (noMovesTimerRef.current) {
+            // console.log(`[Debug Stuck Check] Cleanup: Clearing timer for player ${currentPlayer}.`);
+            clearTimeout(noMovesTimerRef.current);
+            noMovesTimerRef.current = null;
+        }
+    };
+
+  // Dependencies: Run when remaining dice change, player changes, board changes (affecting moves),
+  // bar changes, or game start/rolling status changes. Ensure diceRolled is included.
+  }, [gameState.remainingDice, gameState.currentPlayer, gameState.board, gameState.bar, gameState.gameStarted, gameState.isRolling, gameState.diceRolled, switchPlayer, showNoMovesFeedback]);
 
   // Add the function to handle bearing off directly
   const handleBearOff = useCallback((fromIndex: number) => {
@@ -928,8 +985,6 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
-        maxHeight: '100vh', // Enforce maximum height
-        overflow: 'hidden' // Prevent scrolling within the game container
       }}
     >
       {/* Header - Fixed height */}
@@ -942,18 +997,18 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
             </span>
           </div>
 
-          <div className="flex items-center">
+          <div className="flex items-center flex-shrink-1">
             <PlayerIndicator player={gameState.currentPlayer} theme={theme} playerNames={playerNames} />
           </div>
 
           <div className="flex flex-wrap gap-1">
-            <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} className="text-white">
+            <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} className="text-white p-2">
               <Settings className="h-4 w-4 mr-1" /> Settings
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleReset} className="text-white">
+            <Button variant="ghost" size="sm" onClick={handleReset} className="text-white p-2">
               <RotateCcw className="h-4 w-4 mr-1" /> Reset
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleExit} className="text-white">
+            <Button variant="ghost" size="sm" onClick={handleExit} className="text-white p-2">
               <LogOut className="h-4 w-4 mr-1" /> Exit
             </Button>
           </div>
@@ -981,7 +1036,6 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                       <Bar
                         player={2}
                         count={gameState.bar[2]}
-                        onMove={handlePieceMove}
                         currentPlayer={gameState.currentPlayer}
                         isTopHalf={true}
                         theme={theme}
@@ -989,8 +1043,12 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                           gameState.gameStarted &&
                           gameState.dice.length > 0 &&
                           gameState.currentPlayer === 2 &&
-                          gameState.bar[2] > 0
+                          gameState.bar[2] > 0 &&
+                          BackgammonRules.getAvailableMoves(gameState).some(m => m.from === BAR_POSITION)
                         }
+                        isSelected={selectedPointIndex === BAR_POSITION && gameState.currentPlayer === 2}
+                        selectedPointIndex={selectedPointIndex}
+                        setSelectedPointIndex={setSelectedPointIndex}
                       />
                     </div>
                     <div className="flex-1 flex">
@@ -1007,7 +1065,6 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                       <Bar
                         player={1}
                         count={gameState.bar[1]}
-                        onMove={handlePieceMove}
                         currentPlayer={gameState.currentPlayer}
                         isTopHalf={false}
                         theme={theme}
@@ -1015,8 +1072,12 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                           gameState.gameStarted &&
                           gameState.dice.length > 0 &&
                           gameState.currentPlayer === 1 &&
-                          gameState.bar[1] > 0
+                          gameState.bar[1] > 0 &&
+                          BackgammonRules.getAvailableMoves(gameState).some(m => m.from === BAR_POSITION)
                         }
+                        isSelected={selectedPointIndex === BAR_POSITION && gameState.currentPlayer === 1}
+                        selectedPointIndex={selectedPointIndex}
+                        setSelectedPointIndex={setSelectedPointIndex}
                       />
                     </div>
                     <div className="flex-1 flex">
@@ -1028,8 +1089,20 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                 {/* Dice area */}
                 <div className="absolute inset-x-0 top-1/2 transform -translate-y-1/2 flex justify-center items-center pointer-events-none z-30">
                   {gameState.gameStarted && gameState.dice.length > 0 && (
-                    <div className={`p-2 ${themeStyle.diceBackground} backdrop-blur-sm rounded-lg border border-white/10 shadow-md`}>
+                    <div className={`relative p-2 ${themeStyle.diceBackground} backdrop-blur-sm rounded-lg border border-white/10 shadow-md`}>
                       <Dice values={gameState.dice} rolling={gameState.isRolling} />
+                      {/* "No Moves" Feedback Indicator */}
+                      {showNoMovesFeedback && (
+                          <motion.div
+                              key="no-moves-feedback"
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0 }}
+                              className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 px-2 py-0.5 bg-red-600 text-white text-xs rounded shadow-lg whitespace-nowrap"
+                          >
+                              No moves available
+                          </motion.div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1128,7 +1201,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
 
       {/* CONTROLS - Bottom with fixed height */}
       <div className="bg-gray-800 border-t-4 border-blue-500 shadow-xl flex-shrink-0 p-4">
-        <div className="max-w-4xl mx-auto flex justify-center items-center">
+        <div className="max-w-4xl mx-auto flex flex-wrap justify-center items-center gap-4">
           {!gameState.gameStarted && (
             <Button 
               size="lg" 
@@ -1151,7 +1224,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
               {gameState.dice.length === 0 && !gameState.isRolling && (
                 <Button 
                   size="lg" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 text-xl font-bold"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 text-xl font-bold animate-pulse"
                   onClick={rollDice}
                   disabled={gameState.isRolling}
                 >
@@ -1194,7 +1267,7 @@ function PlayerIndicator({ player, theme, playerNames }: { player: Player; theme
   console.log(`🎲 Active Player: ${player}`);
 
   return (
-    <div className="flex items-center justify-between bg-white/10 backdrop-blur-md rounded-lg px-3 py-2 border border-white/20 shadow-md" style={{minWidth: "180px"}}>
+    <div className="flex items-center justify-between bg-white/10 backdrop-blur-md rounded-lg px-3 py-2 border border-white/20 shadow-md">
       {/* Player 1 Section */}
       <div className="flex items-center gap-2">
         <div 
@@ -1202,14 +1275,14 @@ function PlayerIndicator({ player, theme, playerNames }: { player: Player; theme
         >
           <div className={`h-1.5 w-1.5 rounded-full ${p1DotColorClass}`}></div>
         </div>
-        <div className="text-base font-bold text-white">{player1Name}</div>
+        <div className="text-base font-bold text-white truncate">{player1Name}</div>
       </div>
       
       <div className="text-sm font-bold text-white/70 mx-2">VS</div>
       
       {/* Player 2 Section */}
       <div className="flex items-center gap-2">
-        <div className="text-base font-bold text-white">{player2Name}</div>
+        <div className="text-base font-bold text-white truncate">{player2Name}</div>
         <div 
           className={`w-6 h-6 rounded-md flex items-center justify-center bg-transparent border-2 ${p2BorderColorClass} transition-all duration-200 ${player === 2 ? "scale-110 ring-2 ring-offset-1 ring-blue-500" : "opacity-60"}`}
         >

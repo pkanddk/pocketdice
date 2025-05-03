@@ -9,7 +9,9 @@ interface BarProps {
   theme: string;
   currentPlayer: number;
   isPlayable: boolean;
-  onMove: (fromIndex: number, toIndex: number) => void;
+  isSelected: boolean;
+  selectedPointIndex: number | null;
+  setSelectedPointIndex: (index: number | null) => void;
 }
 
 export const Bar: React.FC<BarProps> = ({
@@ -19,7 +21,9 @@ export const Bar: React.FC<BarProps> = ({
   theme,
   currentPlayer,
   isPlayable,
-  onMove,
+  isSelected,
+  selectedPointIndex,
+  setSelectedPointIndex,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   
@@ -61,7 +65,7 @@ export const Bar: React.FC<BarProps> = ({
     const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
     console.log('Dropping piece from index', fromIndex, 'to bar');
     
-    onMove(fromIndex, BAR_POSITION);
+    setSelectedPointIndex(fromIndex);
   };
 
   // Debug bar state
@@ -133,7 +137,9 @@ export const Bar: React.FC<BarProps> = ({
                 index={BAR_POSITION} // Use BAR_POSITION constant for pieces on the bar
                 isCurrentPlayer={player === currentPlayer}
                 canMove={isPlayable && (i === (isTopHalf ? 0 : Math.min(count, 5) - 1))}
-                onMove={onMove}
+                onMove={(fromIndex, toIndex) => {
+                  // This function is no longer used as the onMove logic is handled by BoardPoint
+                }}
                 theme={theme}
               />
             </div>
