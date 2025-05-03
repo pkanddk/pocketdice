@@ -12,6 +12,7 @@ interface BarProps {
   isSelected: boolean;
   selectedPointIndex: number | null;
   setSelectedPointIndex: (index: number | null) => void;
+  onBarClick?: () => void;
 }
 
 export const Bar: React.FC<BarProps> = ({
@@ -24,6 +25,7 @@ export const Bar: React.FC<BarProps> = ({
   isSelected,
   selectedPointIndex,
   setSelectedPointIndex,
+  onBarClick,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   
@@ -111,6 +113,7 @@ export const Bar: React.FC<BarProps> = ({
         onDragEnter={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onClick={onBarClick}
       >
         {isActivePlayerBar && isPlayable && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

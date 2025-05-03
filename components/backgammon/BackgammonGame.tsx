@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import { Dice } from "./dice"
 import { GamePiece } from "./game-piece"
 import { GameControls } from "./game-controls"
-import { Trophy, Settings, RotateCcw, LogOut } from "lucide-react"
+import { Trophy, Settings, RotateCcw, LogOut, Maximize, Minimize, Smartphone, X } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { SettingsDialog } from "./settings-dialog"
 import { Bar } from "./bar"
@@ -93,6 +93,41 @@ function BearOffZone({
   );
 }
 
+// Helper hook for detecting mobile and orientation
+function useDeviceDetection() {
+  const [isMobile, setIsMobile] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
+
+  useEffect(() => {
+    const checkDevice = () => {
+      // Basic mobile detection (consider a library for more robust detection)
+      const mobileCheck = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobile(mobileCheck);
+
+      // Check orientation
+      const portraitQuery = window.matchMedia("(orientation: portrait)");
+      setIsPortrait(portraitQuery.matches);
+
+      // Listener for orientation changes
+      const handleOrientationChange = (e: MediaQueryListEvent) => {
+        setIsPortrait(e.matches);
+      };
+      portraitQuery.addEventListener("change", handleOrientationChange);
+
+      return () => {
+        portraitQuery.removeEventListener("change", handleOrientationChange);
+      };
+    };
+
+    // Run check after mount (window/navigator are available)
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
+      checkDevice();
+    }
+  }, []);
+
+  return { isMobile, isPortrait };
+}
+
 export default function BackgammonGame({ playerNames = [] }: { playerNames?: string[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -133,6 +168,11 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   // New state for "no moves available" feedback
   const [showNoMovesFeedback, setShowNoMovesFeedback] = useState(false);
   const noMovesTimerRef = useRef<NodeJS.Timeout | null>(null); // Ref to manage the feedback timer
+
+  // New state for mobile suggestions and fullscreen
+  const { isMobile, isPortrait } = useDeviceDetection();
+  const [showRotateSuggestion, setShowRotateSuggestion] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Force render state to handle updates
   useEffect(() => {
@@ -977,6 +1017,71 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     }
   }, [gameState.currentPlayer, gameState.dice, forceRender, switchPlayer]);
 
+  // Effect to show rotation suggestion
+  useEffect(() => {
+    // Show suggestion if on mobile, in portrait, and suggestion isn't already dismissed
+    if (isMobile && isPortrait) {
+        // Check if suggestion was dismissed in this session (optional)
+        // const dismissed = sessionStorage.getItem('dismissedRotateSuggestion');
+        // if (!dismissed) {
+        //   setShowRotateSuggestion(true);
+        // }
+        // For now, always show if mobile & portrait
+        setShowRotateSuggestion(true);
+    } else {
+      setShowRotateSuggestion(false); // Hide if not mobile or not portrait
+    }
+  }, [isMobile, isPortrait]);
+
+   // Effect to listen for fullscreen changes (e.g., user pressing Esc)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      // Check document directly as state might not update immediately
+       setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    // Add vendor prefixes for broader compatibility
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Fullscreen toggle function
+  const toggleFullScreen = () => {
+    const elem = document.documentElement; // Target the whole page
+
+    if (!document.fullscreenElement) {
+      // Attempt standard first
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(err => console.error(`FS Error: ${err.message}`));
+      } else if ((elem as any).webkitRequestFullscreen) { /* Safari */
+        (elem as any).webkitRequestFullscreen();
+      } else if ((elem as any).mozRequestFullScreen) { /* Firefox */
+        (elem as any).mozRequestFullScreen();
+      } else if ((elem as any).msRequestFullscreen) { /* IE/Edge */
+        (elem as any).msRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(err => console.error(`Exit FS Error: ${err.message}`));
+      } else if ((document as any).webkitExitFullscreen) { /* Safari */
+        (document as any).webkitExitFullscreen();
+      } else if ((document as any).mozCancelFullScreen) { /* Firefox */
+        (document as any).mozCancelFullScreen();
+      } else if ((document as any).msExitFullscreen) { /* IE/Edge */
+        (document as any).msExitFullscreen();
+      }
+    }
+     // State update relies on the event listener now
+  };
+
   return (
     <div 
       id="backgammon-game-container" 
@@ -987,264 +1092,326 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
         minHeight: '100vh',
       }}
     >
-      {/* Header - Fixed height */}
-      <div className="bg-gray-800 p-3 shadow-md flex-shrink-0">
+      {/* Header - Add responsive classes */}
+      <div className="bg-gray-800 p-2 sm:p-3 shadow-md flex-shrink-0"> {/* Reduced padding on smallest screens */}
         <div className="flex flex-wrap justify-between items-center gap-2">
-          <div className="flex items-center">
-            <Trophy className="h-5 w-5 text-yellow-400 mr-2" />
-            <span className="text-white font-bold">
-              Score: {scores[1]} - {scores[2]} (Game {gameNumber} of 5)
+          {/* Score - Allow shrinking */}
+          <div className="flex items-center flex-shrink min-w-0">
+            <Trophy className="h-5 w-5 text-yellow-400 mr-1 sm:mr-2" />
+            <span className="text-white font-bold text-sm sm:text-base truncate"> {/* Smaller text on mobile */}
+              Score: {scores[BLACK]} - {scores[WHITE]} (G{gameNumber}) {/* Shorter text */}
             </span>
           </div>
 
-          <div className="flex items-center flex-shrink-1">
+          {/* Player Indicator - Center on small screens when wrapping */}
+          <div className="flex items-center flex-grow justify-center sm:flex-grow-0 sm:flex-shrink-1 order-first sm:order-none w-full sm:w-auto">
             <PlayerIndicator player={gameState.currentPlayer} theme={theme} playerNames={playerNames} />
           </div>
 
-          <div className="flex flex-wrap gap-1">
-            <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} className="text-white p-2">
-              <Settings className="h-4 w-4 mr-1" /> Settings
+          {/* Buttons - Allow shrinking/wrapping */}
+          <div className="flex flex-wrap gap-1 justify-end flex-shrink">
+             {/* Add Fullscreen button */}
+             {/* Only show Fullscreen button on browsers that support it (basic check) */}
+             {typeof document !== 'undefined' && (document.documentElement.requestFullscreen || (document.documentElement as any).webkitRequestFullscreen || (document.documentElement as any).mozRequestFullScreen || (document.documentElement as any).msRequestFullscreen) && (
+                <Button variant="ghost" size="sm" onClick={toggleFullScreen} className="text-white p-1 sm:p-2">
+                  {isFullscreen ? <Minimize className="h-4 w-4 sm:mr-1" /> : <Maximize className="h-4 w-4 sm:mr-1" />}
+                  <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+                </Button>
+             )}
+            {/* Settings Button */}
+            <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} className="text-white p-1 sm:p-2">
+              <Settings className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Settings</span> {/* Hide text on small screens */}
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleReset} className="text-white p-2">
-              <RotateCcw className="h-4 w-4 mr-1" /> Reset
+            <Button variant="ghost" size="sm" onClick={handleReset} className="text-white p-1 sm:p-2">
+              <RotateCcw className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Reset</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleExit} className="text-white p-2">
-              <LogOut className="h-4 w-4 mr-1" /> Exit
+            <Button variant="ghost" size="sm" onClick={handleExit} className="text-white p-1 sm:p-2">
+              <LogOut className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Exit</span>
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Game board - Take available space but not more than needed */}
-      <div className="flex-grow flex-shrink-1 overflow-auto p-3 flex flex-col items-center justify-center">
-        <div className="w-full max-w-4xl">
-          {/* Board with responsive aspect ratio */}
-          <div className="relative w-full" style={{ paddingBottom: "50%" }}>
-            <div 
-              className="absolute inset-0 bg-gradient-to-b from-gray-900 to-gray-800 rounded-lg border-4 shadow-lg"
-              style={{ borderColor: themeStyle.borderColor }}
-            >
-              <div className="h-full flex">
-                {/* Left half */}
-                <div className="flex-1 flex flex-col">
-                  {/* Top quadrants */}
-                  <div className="flex-1 flex">
+      {/* Rotate Suggestion Banner */}
+      {showRotateSuggestion && (
+        <div className="bg-yellow-500 text-black p-2 text-center text-sm flex justify-center items-center gap-2 relative z-50"> {/* Ensure banner is on top */}
+          <Smartphone className="h-4 w-4 flex-shrink-0" />
+          <span>For the best experience, please rotate your device.</span>
+          <button
+            onClick={() => {
+                setShowRotateSuggestion(false);
+                // Optionally save dismissal state:
+                // sessionStorage.setItem('dismissedRotateSuggestion', 'true');
+            }}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-black/10 rounded-full"
+            aria-label="Dismiss rotation suggestion"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Conditional Rendering: START GAME Button or GAME BOARD */}
+      {!gameState.gameStarted ? (
+        // Show Start Game Button Centered
+        <div className="flex-grow flex flex-col items-center justify-center p-4">
+          <Button
+            size="lg"
+            className="bg-green-600 hover:bg-green-700 text-white px-8 py-5 text-2xl font-bold shadow-lg animate-pulse"
+            onClick={() => {
+              if (seriesWinner) {
+                alert(`The series is already over! Player ${seriesWinner} won.`);
+                return;
+              }
+              debugLog("Starting new game", null);
+              setGameState(state => ({ ...state, gameStarted: true }));
+            }}
+          >
+            START GAME
+          </Button>
+          {/* Optional: Add instructions or welcome message here */}
+           <p className="text-gray-400 mt-4 text-center">Click Start Game to begin!</p>
+        </div>
+      ) : (
+        // Show Game Board Area
+        <div className="flex-grow flex-shrink-1 overflow-auto p-1 sm:p-3 flex flex-col items-center justify-center"> {/* Reduced padding */}
+          <div className="w-full max-w-4xl">
+            {/* Board with responsive aspect ratio */}
+            <div className="relative w-full pb-[75%] sm:pb-[50%]"> {/* Portrait: 4:3, Larger: 2:1 */}
+              <div
+                className="absolute inset-0 bg-gradient-to-b from-gray-900 to-gray-800 rounded-lg border-2 sm:border-4 shadow-lg" // Thinner border on mobile
+                style={{ borderColor: themeStyle.borderColor }}
+              >
+                <div className="h-full flex">
+                  {/* Left half */}
+                  <div className="flex-1 flex flex-col">
+                    {/* Top quadrants */}
                     <div className="flex-1 flex">
-                      {renderPoints('TOP_LEFT')}
+                      <div className="flex-1 flex">
+                        {renderPoints('TOP_LEFT')}
+                      </div>
+                      <div className="w-10 relative border-l border-r border-gray-700">
+                        <Bar
+                          player={WHITE} // Player 2 is White
+                          count={gameState.bar[WHITE]}
+                          currentPlayer={gameState.currentPlayer}
+                          isTopHalf={true}
+                          theme={theme}
+                          isPlayable={
+                            gameState.gameStarted &&
+                            gameState.diceRolled && // Check if dice have been rolled this turn
+                            gameState.currentPlayer === WHITE &&
+                            gameState.bar[WHITE] > 0 &&
+                            BackgammonRules.getAvailableMoves({
+                                ...gameState,
+                                dice: gameState.remainingDice // Check with remaining dice
+                            }).some(m => m.from === BAR_POSITION)
+                          }
+                          onBarClick={() => {
+                            if (gameState.currentPlayer === WHITE && gameState.bar[WHITE] > 0 && gameState.diceRolled) {
+                              const movesFromBar = BackgammonRules.getAvailableMoves({
+                                  ...gameState, dice: gameState.remainingDice
+                              }).filter(m => m.from === BAR_POSITION);
+                              if (movesFromBar.length > 0) {
+                                setSelectedPointIndex(BAR_POSITION);
+                                console.log("White Bar selected");
+                              } else {
+                                console.log("White Bar clicked, but no valid moves from bar.");
+                              }
+                            }
+                          }}
+                          isSelected={selectedPointIndex === BAR_POSITION && gameState.currentPlayer === WHITE}
+                          selectedPointIndex={selectedPointIndex}
+                          setSelectedPointIndex={setSelectedPointIndex}
+                        />
+                      </div>
+                      <div className="flex-1 flex">
+                        {renderPoints('TOP_RIGHT')}
+                      </div>
                     </div>
-                    <div className="w-10 relative border-l border-r border-gray-700">
-                      <Bar
-                        player={2}
-                        count={gameState.bar[2]}
-                        currentPlayer={gameState.currentPlayer}
-                        isTopHalf={true}
-                        theme={theme}
-                        isPlayable={
-                          gameState.gameStarted &&
-                          gameState.dice.length > 0 &&
-                          gameState.currentPlayer === 2 &&
-                          gameState.bar[2] > 0 &&
-                          BackgammonRules.getAvailableMoves(gameState).some(m => m.from === BAR_POSITION)
-                        }
-                        isSelected={selectedPointIndex === BAR_POSITION && gameState.currentPlayer === 2}
-                        selectedPointIndex={selectedPointIndex}
-                        setSelectedPointIndex={setSelectedPointIndex}
-                      />
-                    </div>
+
+                    {/* Bottom quadrants */}
                     <div className="flex-1 flex">
-                      {renderPoints('TOP_RIGHT')}
+                      <div className="flex-1 flex">
+                        {renderPoints('BOTTOM_LEFT')}
+                      </div>
+                      <div className="w-10 relative border-l border-r border-gray-700">
+                        <Bar
+                          player={BLACK} // Player 1 is Black
+                          count={gameState.bar[BLACK]}
+                          currentPlayer={gameState.currentPlayer}
+                          isTopHalf={false}
+                          theme={theme}
+                          isPlayable={
+                            gameState.gameStarted &&
+                            gameState.diceRolled && // Check if dice have been rolled this turn
+                            gameState.currentPlayer === BLACK &&
+                            gameState.bar[BLACK] > 0 &&
+                            BackgammonRules.getAvailableMoves({
+                                ...gameState,
+                                dice: gameState.remainingDice // Check with remaining dice
+                            }).some(m => m.from === BAR_POSITION)
+                          }
+                          onBarClick={() => {
+                            if (gameState.currentPlayer === BLACK && gameState.bar[BLACK] > 0 && gameState.diceRolled) {
+                              const movesFromBar = BackgammonRules.getAvailableMoves({
+                                  ...gameState, dice: gameState.remainingDice
+                              }).filter(m => m.from === BAR_POSITION);
+                              if (movesFromBar.length > 0) {
+                                setSelectedPointIndex(BAR_POSITION);
+                                console.log("Black Bar selected");
+                              } else {
+                                 console.log("Black Bar clicked, but no valid moves from bar.");
+                              }
+                            }
+                          }}
+                          isSelected={selectedPointIndex === BAR_POSITION && gameState.currentPlayer === BLACK}
+                          selectedPointIndex={selectedPointIndex}
+                          setSelectedPointIndex={setSelectedPointIndex}
+                        />
+                      </div>
+                      <div className="flex-1 flex">
+                        {renderPoints('BOTTOM_RIGHT')}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Bottom quadrants */}
-                  <div className="flex-1 flex">
-                    <div className="flex-1 flex">
-                      {renderPoints('BOTTOM_LEFT')}
-                    </div>
-                    <div className="w-10 relative border-l border-r border-gray-700">
-                      <Bar
-                        player={1}
-                        count={gameState.bar[1]}
-                        currentPlayer={gameState.currentPlayer}
-                        isTopHalf={false}
-                        theme={theme}
-                        isPlayable={
-                          gameState.gameStarted &&
-                          gameState.dice.length > 0 &&
-                          gameState.currentPlayer === 1 &&
-                          gameState.bar[1] > 0 &&
-                          BackgammonRules.getAvailableMoves(gameState).some(m => m.from === BAR_POSITION)
-                        }
-                        isSelected={selectedPointIndex === BAR_POSITION && gameState.currentPlayer === 1}
-                        selectedPointIndex={selectedPointIndex}
-                        setSelectedPointIndex={setSelectedPointIndex}
-                      />
-                    </div>
-                    <div className="flex-1 flex">
-                      {renderPoints('BOTTOM_RIGHT')}
-                    </div>
+                  {/* Dice area - Adjust size/position slightly? */}
+                  <div
+                    className="absolute inset-x-0 top-1/2 transform -translate-y-1/2 flex justify-center items-center z-30 scale-90 sm:scale-100" // Slightly smaller on mobile
+                    onClick={() => {
+                      // Only allow roll if game started, it's current player's turn,
+                      // they are not rolling, and dice haven't been rolled for this turn yet.
+                      if (gameState.gameStarted && !gameState.isRolling && gameState.dice.length === 0 && !gameState.diceRolled) {
+                        rollDice();
+                      }
+                    }}
+                    style={{ cursor: (gameState.gameStarted && !gameState.isRolling && gameState.dice.length === 0 && !gameState.diceRolled) ? 'pointer' : 'default' }}
+                  >
+                    {/* Conditionally render dice OR a prompt to roll */}
+                    {/* Prompt to roll */}
+                    {gameState.gameStarted && !gameState.isRolling && gameState.dice.length === 0 && !gameState.diceRolled && (
+                       <div className="p-2 bg-blue-600/80 backdrop-blur-sm rounded-lg border border-white/20 shadow-md text-white text-center font-bold animate-pulse">
+                         Tap to Roll
+                       </div>
+                    )}
+                    {/* Show Dice (if rolled or currently rolling) */}
+                    {gameState.gameStarted && (gameState.dice.length > 0 || gameState.isRolling) && (
+                      <div className={`relative p-2 ${themeStyle.diceBackground} backdrop-blur-sm rounded-lg border border-white/10 shadow-md`}>
+                        <Dice values={gameState.dice} rolling={gameState.isRolling} />
+                        {/* "No Moves" Feedback Indicator */}
+                        {showNoMovesFeedback && (
+                            <motion.div
+                                key="no-moves-feedback"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 px-2 py-0.5 bg-red-600 text-white text-xs rounded shadow-lg whitespace-nowrap"
+                            >
+                                No moves available
+                            </motion.div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
 
-                {/* Dice area */}
-                <div className="absolute inset-x-0 top-1/2 transform -translate-y-1/2 flex justify-center items-center pointer-events-none z-30">
-                  {gameState.gameStarted && gameState.dice.length > 0 && (
-                    <div className={`relative p-2 ${themeStyle.diceBackground} backdrop-blur-sm rounded-lg border border-white/10 shadow-md`}>
-                      <Dice values={gameState.dice} rolling={gameState.isRolling} />
-                      {/* "No Moves" Feedback Indicator */}
-                      {showNoMovesFeedback && (
-                          <motion.div
-                              key="no-moves-feedback"
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0 }}
-                              className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 px-2 py-0.5 bg-red-600 text-white text-xs rounded shadow-lg whitespace-nowrap"
-                          >
-                              No moves available
-                          </motion.div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Bearing off indicators */}
-                <div className="absolute top-2 right-2 p-2 bg-black/30 rounded text-white text-xs">
-                  P1: {gameState.borneOff[1]}/15
-                </div>
-                <div className="absolute bottom-2 right-2 p-2 bg-black/30 rounded text-white text-xs">
-                  P2: {gameState.borneOff[2]}/15
+                  {/* Bearing off indicators - Smaller text */}
+                  <div className="absolute top-1 right-1 sm:top-2 sm:right-2 p-1 sm:p-2 bg-black/30 rounded text-white text-[10px] sm:text-xs">
+                    P1: {gameState.borneOff[BLACK]}/15
+                  </div>
+                  <div className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 p-1 sm:p-2 bg-black/30 rounded text-white text-[10px] sm:text-xs">
+                    P2: {gameState.borneOff[WHITE]}/15
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Bearing Off Zone */}
-          <div className="mt-3 h-10 flex w-full rounded-lg overflow-hidden border-2 border-gray-700">
-            {/* Player 1 Bearing Off Zone */}
-            <div 
-              className={`flex-1 flex items-center justify-start px-2 space-x-1 overflow-x-auto
-                ${BackgammonRules.canBearOff(gameState.board, gameState.bar, 1) && gameState.currentPlayer === 1 ? 
-                  'bg-blue-500/20 ring-1 ring-blue-500' : 
-                  'bg-gradient-to-r from-opacity-20 to-opacity-40'}
-              `}
-              style={{ 
-                background: `linear-gradient(to right, ${themeStyle.player1Color}22, ${themeStyle.player1Color}44)`,
-                borderRight: '1px solid rgba(255,255,255,0.1)'
-              }}
-              onDragOver={(e) => {
-                if (BackgammonRules.canBearOff(gameState.board, gameState.bar, 1) && gameState.currentPlayer === 1) {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = 'move';
-                }
-              }}
-              onDrop={(e) => {
-                if (BackgammonRules.canBearOff(gameState.board, gameState.bar, 1) && gameState.currentPlayer === 1) {
-                  e.preventDefault();
-                  const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                  handlePieceMove(fromIndex, BEARING_OFF_POSITION);
-                }
-              }}
-            >
-              <div className="flex-shrink-0 text-white text-xs font-bold mr-2">P1:</div>
-              {Array.from({ length: gameState.borneOff[1] }).map((_, i) => (
-                <div 
-                  key={i} 
-                  className="w-4 h-4 rounded-full flex-shrink-0" 
-                  style={{ 
-                    background: themeStyle.player1Color,
-                    border: '1px solid rgba(255,255,255,0.2)'
+            {/* Bearing Off Zone - Adjust height/padding */}
+            <div className="mt-2 sm:mt-3 h-8 sm:h-10 flex w-full rounded-lg overflow-hidden border border-gray-700 sm:border-2"> {/* Smaller height/border */}
+               {/* Player 1 Bearing Off Zone */}
+               <div
+                 className={`flex-1 flex items-center justify-start px-1 sm:px-2 space-x-1 overflow-x-auto ${BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK ? 'bg-blue-500/20 ring-1 ring-blue-500' : 'bg-gradient-to-r from-opacity-20 to-opacity-40'}`}
+                 style={{
+                    background: `linear-gradient(to right, ${themeStyle.player1Color}22, ${themeStyle.player1Color}44)`,
+                    borderRight: '1px solid rgba(255,255,255,0.1)'
                   }}
-                />
-              ))}
-            </div>
-            
-            {/* Player 2 Bearing Off Zone */}
-            <div 
-              className={`flex-1 flex items-center justify-start px-2 space-x-1 overflow-x-auto
-                ${BackgammonRules.canBearOff(gameState.board, gameState.bar, 2) && gameState.currentPlayer === 2 ? 
-                  'bg-blue-500/20 ring-1 ring-blue-500' : 
-                  'bg-gradient-to-r from-opacity-20 to-opacity-40'}
-              `}
-              style={{ 
-                background: `linear-gradient(to right, ${themeStyle.player2Color}22, ${themeStyle.player2Color}44)`,
-                borderLeft: '1px solid rgba(255,255,255,0.1)'
-              }}
-              onDragOver={(e) => {
-                if (BackgammonRules.canBearOff(gameState.board, gameState.bar, 2) && gameState.currentPlayer === 2) {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = 'move';
-                }
-              }}
-              onDrop={(e) => {
-                if (BackgammonRules.canBearOff(gameState.board, gameState.bar, 2) && gameState.currentPlayer === 2) {
-                  e.preventDefault();
-                  const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                  handlePieceMove(fromIndex, BEARING_OFF_POSITION);
-                }
-              }}
-            >
-              <div className="flex-shrink-0 text-white text-xs font-bold mr-2">P2:</div>
-              {Array.from({ length: gameState.borneOff[2] }).map((_, i) => (
-                <div 
-                  key={i} 
-                  className="w-4 h-4 rounded-full flex-shrink-0" 
-                  style={{ 
-                    background: themeStyle.player2Color,
-                    border: '1px solid rgba(0,0,0,0.2)'
+                 onDragOver={(e) => {
+                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK) { // Use constant
+                     e.preventDefault();
+                     e.dataTransfer.dropEffect = 'move';
+                   }
+                 }}
+                 onDrop={(e) => {
+                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK) { // Use constant
+                     e.preventDefault();
+                     const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                      // Validate the move *before* calling handlePieceMove for drop
+                     const availableMoves = BackgammonRules.getAvailableMoves({...gameState, dice: gameState.remainingDice});
+                     const isValidBearOffDrop = availableMoves.some(move => move.from === fromIndex && move.to === BEARING_OFF_POSITION);
+                      if (isValidBearOffDrop) {
+                         handlePieceMove(fromIndex, BEARING_OFF_POSITION);
+                     } else {
+                          console.log(`Invalid drop bear off from ${fromIndex}`);
+                     }
+                   }
+                 }}
+               >
+                 <div className="flex-shrink-0 text-white text-[10px] sm:text-xs font-bold mr-1 sm:mr-2">P1:</div>
+                 {Array.from({ length: gameState.borneOff[BLACK] }).map((_, i) => (
+                   <div
+                     key={`p1-borne-${i}`}
+                     className="w-3 h-3 sm:w-4 sm:h-4 rounded-full flex-shrink-0" // Smaller pieces
+                     style={{
+                        background: themeStyle.player1Color,
+                        border: '1px solid rgba(255,255,255,0.2)'
+                      }}
+                   />
+                 ))}
+               </div>
+               {/* Player 2 Bearing Off Zone */}
+                <div
+                 className={`flex-1 flex items-center justify-start px-1 sm:px-2 space-x-1 overflow-x-auto ${BackgammonRules.canBearOff(gameState.board, gameState.bar, WHITE) && gameState.currentPlayer === WHITE ? 'bg-blue-500/20 ring-1 ring-blue-500' : 'bg-gradient-to-r from-opacity-20 to-opacity-40'}`}
+                 style={{
+                    background: `linear-gradient(to right, ${themeStyle.player2Color}22, ${themeStyle.player2Color}44)`,
+                    borderLeft: '1px solid rgba(255,255,255,0.1)'
                   }}
-                />
-              ))}
+                 onDragOver={(e) => {
+                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, WHITE) && gameState.currentPlayer === WHITE) { // Use constant
+                     e.preventDefault();
+                     e.dataTransfer.dropEffect = 'move';
+                   }
+                 }}
+                 onDrop={(e) => {
+                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, WHITE) && gameState.currentPlayer === WHITE) { // Use constant
+                     e.preventDefault();
+                     const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                      // Validate the move *before* calling handlePieceMove for drop
+                     const availableMoves = BackgammonRules.getAvailableMoves({...gameState, dice: gameState.remainingDice});
+                     const isValidBearOffDrop = availableMoves.some(move => move.from === fromIndex && move.to === BEARING_OFF_POSITION);
+                      if (isValidBearOffDrop) {
+                         handlePieceMove(fromIndex, BEARING_OFF_POSITION);
+                     } else {
+                          console.log(`Invalid drop bear off from ${fromIndex}`);
+                     }
+                   }
+                 }}
+               >
+                 <div className="flex-shrink-0 text-white text-[10px] sm:text-xs font-bold mr-1 sm:mr-2">P2:</div>
+                 {Array.from({ length: gameState.borneOff[WHITE] }).map((_, i) => (
+                    <div
+                     key={`p2-borne-${i}`}
+                     className="w-3 h-3 sm:w-4 sm:h-4 rounded-full flex-shrink-0" // Smaller pieces
+                      style={{
+                        background: themeStyle.player2Color,
+                        border: '1px solid rgba(0,0,0,0.2)'
+                      }}
+                   />
+                 ))}
+               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* CONTROLS - Bottom with fixed height */}
-      <div className="bg-gray-800 border-t-4 border-blue-500 shadow-xl flex-shrink-0 p-4">
-        <div className="max-w-4xl mx-auto flex flex-wrap justify-center items-center gap-4">
-          {!gameState.gameStarted && (
-            <Button 
-              size="lg" 
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-4 text-xl font-bold"
-              onClick={() => {
-                if (seriesWinner) {
-                  alert(`The series is already over! Player ${seriesWinner} won.`);
-                  return;
-                }
-                debugLog("Starting new game", null);
-                setGameState(state => ({ ...state, gameStarted: true }));
-              }}
-            >
-              START GAME
-            </Button>
-          )}
-          
-          {gameState.gameStarted && (
-            <>
-              {gameState.dice.length === 0 && !gameState.isRolling && (
-                <Button 
-                  size="lg" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 text-xl font-bold animate-pulse"
-                  onClick={rollDice}
-                  disabled={gameState.isRolling}
-                >
-                  ROLL DICE
-                </Button>
-              )}
-              
-              {gameState.dice.length > 0 && (
-                <Button 
-                  size="lg" 
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-4 text-xl font-bold"
-                  onClick={switchPlayer}
-                >
-                  END TURN
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+      )}
 
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} theme={theme} onThemeChange={setTheme} />
     </div>
@@ -1252,12 +1419,9 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
 }
 
 function PlayerIndicator({ player, theme, playerNames }: { player: Player; theme: string; playerNames?: string[] }) {
-  // player prop is the gameState.currentPlayer
-  
   const player1Name = playerNames && playerNames.length > 0 ? playerNames[0] : "Player 1";
   const player2Name = playerNames && playerNames.length > 1 ? playerNames[1] : "Player 2";
-  
-  // Player 1 is always black, Player 2 is always white (for border/dot)
+
   const p1BorderColorClass = 'border-black';
   const p1DotColorClass = 'bg-black';
   const p2BorderColorClass = 'border-white';
@@ -1267,26 +1431,30 @@ function PlayerIndicator({ player, theme, playerNames }: { player: Player; theme
   console.log(`🎲 Active Player: ${player}`);
 
   return (
-    <div className="flex items-center justify-between bg-white/10 backdrop-blur-md rounded-lg px-3 py-2 border border-white/20 shadow-md">
+    // Reduced padding/gap on small screens
+    <div className="flex items-center justify-between bg-white/10 backdrop-blur-md rounded-lg px-2 py-1 sm:px-3 sm:py-2 border border-white/20 shadow-md w-full max-w-xs sm:max-w-sm mx-auto">
       {/* Player 1 Section */}
-      <div className="flex items-center gap-2">
-        <div 
-          className={`w-6 h-6 rounded-md flex items-center justify-center bg-transparent border-2 ${p1BorderColorClass} transition-all duration-200 ${player === 1 ? "scale-110 ring-2 ring-offset-1 ring-blue-500" : "opacity-60"}`}
+      <div className="flex items-center gap-1 sm:gap-2 overflow-hidden"> {/* Allow text truncate */}
+        <div
+          className={`w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center bg-transparent border-2 ${p1BorderColorClass} transition-all duration-200 flex-shrink-0 ${player === BLACK ? "scale-110 ring-2 ring-offset-1 ring-blue-500" : "opacity-60"}`} // Use constant
         >
-          <div className={`h-1.5 w-1.5 rounded-full ${p1DotColorClass}`}></div>
+          <div className={`h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full ${p1DotColorClass}`}></div>
         </div>
-        <div className="text-base font-bold text-white truncate">{player1Name}</div>
+        {/* Smaller text on mobile */}
+        <div className="text-sm sm:text-base font-bold text-white truncate">{player1Name}</div>
       </div>
-      
-      <div className="text-sm font-bold text-white/70 mx-2">VS</div>
-      
+
+      {/* Smaller VS text */}
+      <div className="text-xs sm:text-sm font-bold text-white/70 mx-1 sm:mx-2">VS</div>
+
       {/* Player 2 Section */}
-      <div className="flex items-center gap-2">
-        <div className="text-base font-bold text-white truncate">{player2Name}</div>
-        <div 
-          className={`w-6 h-6 rounded-md flex items-center justify-center bg-transparent border-2 ${p2BorderColorClass} transition-all duration-200 ${player === 2 ? "scale-110 ring-2 ring-offset-1 ring-blue-500" : "opacity-60"}`}
+      <div className="flex items-center gap-1 sm:gap-2 overflow-hidden"> {/* Allow text truncate */}
+         {/* Smaller text on mobile */}
+        <div className="text-sm sm:text-base font-bold text-white truncate">{player2Name}</div>
+        <div
+          className={`w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center bg-transparent border-2 ${p2BorderColorClass} transition-all duration-200 flex-shrink-0 ${player === WHITE ? "scale-110 ring-2 ring-offset-1 ring-blue-500" : "opacity-60"}`} // Use constant
         >
-           <div className={`h-1.5 w-1.5 rounded-full ${p2DotColorClass}`}></div> 
+           <div className={`h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full ${p2DotColorClass}`}></div>
         </div>
       </div>
     </div>
