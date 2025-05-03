@@ -31,13 +31,13 @@ export function GameNavbar() {
                 <DropdownMenuSubTrigger>Yahtzee</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem onClick={() => router.push("/dice-against-machine")}>
-                    Dice Against the Machine
+                    Player vs A.I.
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => router.push("/old-school")}>
-                    Old School
+                    Score Card
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => router.push("/digital-dice")}>
-                    Digital Dice
+                    Player vs Player
                   </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>

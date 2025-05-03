@@ -1,0 +1,1 @@
+// White's home board is spaces 19-24 

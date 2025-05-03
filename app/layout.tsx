@@ -1,27 +1,36 @@
-import ErrorBoundary from '../components/ErrorBoundary';
-import { Navbar } from "@/components/Navbar";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+// Remove the Navbar import
+// import { Navbar } from "@/components/Navbar"; 
+import { ThemeProvider } from "@/components/theme-provider";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Pocket Score",
+  description: "Your go-to scoring app",
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en">
-      <body>
-        <Navbar />
-        <ErrorBoundary fallback={<div>Something went wrong. Please try refreshing the page.</div>}>
-          <main>{children}</main>
-        </ErrorBoundary>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {/* Remove the Navbar rendering */}
+          {/* <Navbar /> */}
+          {children}
+        </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }
-
-
-
-import './globals.css'
-
-export const metadata = {
-      generator: 'v0.dev'
-    };

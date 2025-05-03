@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from "./ui/button";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -15,8 +14,6 @@ import {
 } from "./ui/dropdown-menu";
 
 export function Navbar() {
-  const router = useRouter();
-  
   return (
     <nav className="border-b">
       <div className="flex h-16 items-center px-4">
@@ -36,14 +33,14 @@ export function Navbar() {
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>Yahtzee</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  <DropdownMenuItem onClick={() => router.push("/dice-against-machine")}>
-                    Dice Against the Machine
+                  <DropdownMenuItem asChild>
+                    <Link href="/dice-against-machine">Player vs A.I.</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push("/old-school")}>
-                    Old School
+                  <DropdownMenuItem asChild>
+                    <Link href="/old-school">Score Card</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push("/digital-dice")}>
-                    Digital Dice
+                  <DropdownMenuItem asChild>
+                    <Link href="/digital-dice">Player vs Player</Link>
                   </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
@@ -51,8 +48,8 @@ export function Navbar() {
               <DropdownMenuSeparator />
               
               {/* Backgammon Option */}
-              <DropdownMenuItem onClick={() => router.push("/backgammon")}>
-                Backgammon
+              <DropdownMenuItem asChild>
+                <Link href="/backgammon">Backgammon</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
