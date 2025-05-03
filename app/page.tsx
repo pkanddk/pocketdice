@@ -256,49 +256,28 @@ export default function HomePage() {
 
             <Button 
               onClick={handleStartGame}
-              className="w-full h-12 text-lg rounded-full bg-blue-500 hover:bg-blue-600 transition-all duration-300"
               disabled={isStartDisabled}
+              className="w-full mt-4 py-4 text-lg font-semibold rounded-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
             >
               Start Game
             </Button>
           </CardContent>
         </Card>
+      </motion.div>
 
-        <motion.div 
-          className="mt-8 text-center space-y-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
-        >
-          <p className="text-blue-600 text-lg font-medium">
-            Choose your game mode and click Start Game to begin!
-          </p>
-          
-          <div className="w-8 h-8 mx-auto border-2 border-blue-500 rounded-lg flex items-center justify-center">
-            <div className="w-2 h-2 bg-blue-500 rounded-full" />
-          </div>
-        </motion.div>
-
-        <div className="mt-4 flex flex-col space-y-2">
-          <h3 className="text-lg font-semibold">Quick Play:</h3>
-          <Link 
-            href={getBackgammonLink(["Player 1", "Player 2"])}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Start Default Game
-          </Link>
-          <Link 
-            href={getBackgammonLink(["John", "Mary"])}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-          >
-            John vs Mary
-          </Link>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.5 }}
+        className="text-center mt-8 mb-4"
+      >
+        <p className="text-blue-700">Choose your game mode and click Start Game to begin!</p>
+         {/* Add the die icon below the text */}
+        <div className="mt-2 inline-block border-2 border-blue-500 rounded p-1">
+            <Dice3 className="h-4 w-4 text-blue-600" />
         </div>
       </motion.div>
 
-      <footer className="mt-auto pt-8 text-center text-sm text-gray-500">
-        <p>Pocket Score © {new Date().getFullYear()} | a pk and dk app</p>
-      </footer>
     </div>
   )
 }
