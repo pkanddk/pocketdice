@@ -186,6 +186,11 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     player: 0, x: 0, y: 0, visible: false, fromIndex: null, currentOverIndex: null 
   });
   const gameBoardRef = useRef<HTMLDivElement>(null); // Ref for the main board area to get offsets
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Force render state to handle updates
   useEffect(() => {
@@ -543,12 +548,43 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
       newGameState.remainingDice = [];
       newGameState.diceRolled = false;
     } else {
-      // Regular move - remove only the used die
-      const usedDie = matchingMove.die;
+      // Regular move - remove only the used die or dice
       const tempRemainingDice = [...activeDice]; // Create a mutable copy
-      const dieIndexToRemove = tempRemainingDice.findIndex(d => d === usedDie);
-      if (dieIndexToRemove > -1) {
-        tempRemainingDice.splice(dieIndexToRemove, 1);
+
+      if (matchingMove.isChainedDouble && typeof matchingMove.diceUsed === 'number' && matchingMove.diceUsed > 0) {
+        // This is a compound move using multiple identical dice (e.g., from doubles)
+        const numDiceActuallyUsed = matchingMove.diceUsed;
+        const singleDieValueInChain = matchingMove.die; // In this context, .die is the value of one segment
+        
+        console.log(`Chained double move: using ${numDiceActuallyUsed} dice of value ${singleDieValueInChain}`);
+        
+        for (let i = 0; i < numDiceActuallyUsed; i++) {
+            const dieIndex = tempRemainingDice.findIndex(d => d === singleDieValueInChain);
+            if (dieIndex > -1) {
+                tempRemainingDice.splice(dieIndex, 1);
+            } else {
+                // This is a critical issue if it occurs, means gameState is inconsistent with the proposed move.
+                console.warn(`CRITICAL: Could not find die ${singleDieValueInChain} to remove for chained double (iteration ${i+1}/${numDiceActuallyUsed}).`);
+                console.warn(`RemainingDice before this attempt: ${activeDice.join(',')}. Current tempRemainingDice: ${tempRemainingDice.join(',')}. Move:`, matchingMove);
+                // Potentially halt further processing or throw an error, as state is desynced.
+                break; 
+            }
+        }
+      } else { 
+        // Standard single die move.
+        // For a single die move, matchingMove.die is the value of the die.
+        // matchingMove.diceUsed should be 1 (or undefined, handled by game-logic).
+        const usedDie = matchingMove.die;
+        console.log('Single die move: using die', usedDie);
+        const dieIndexToRemove = tempRemainingDice.findIndex(d => d === usedDie);
+        if (dieIndexToRemove > -1) {
+            tempRemainingDice.splice(dieIndexToRemove, 1);
+        } else {
+            // This can happen if a move was deemed valid but the die isn't in remainingDice.
+            // e.g. if remainingDice was [5,5] and a move for a 5 was made, but then another move for a 5 was attempted
+            // before availableMoves was re-calculated with only one 5.
+            console.warn(`Could not find single die ${usedDie} to remove from remainingDice. ActiveDice: ${activeDice.join(',')}. Current tempRemainingDice: ${tempRemainingDice.join(',')}. MatchingMove:`, matchingMove);
+        }
       }
       
       // Update the game state with the remaining dice
@@ -617,18 +653,10 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     const pointData = clickedIndex !== BAR_POSITION ? gameState.board[clickedIndex] : null;
     const isCurrentPlayerBarNonEmpty = gameState.bar[gameState.currentPlayer] > 0;
 
-    if (isCurrentPlayerBarNonEmpty && selectedPointIndex !== BAR_POSITION && clickedIndex !== BAR_POSITION) {
-      debugLog("Cannot select point, player must move from bar", { player: gameState.currentPlayer, barCount: gameState.bar[gameState.currentPlayer] });
-      // Optionally, add feedback like a visual shake or small message if bar is not already selected
-      // If bar is not selected, and they click a point, maybe select the bar for them?
-      // For now, just prevent other selections and guide to bar or let bar click handle it.
-      if (gameState.bar[gameState.currentPlayer] > 0) setSelectedPointIndex(BAR_POSITION); 
-      return;
-    }
-    
-    // If clicking the BAR itself
-    if (clickedIndex === BAR_POSITION) {
-      if (gameState.bar[gameState.currentPlayer] > 0) {
+    if (isCurrentPlayerBarNonEmpty) {
+      // Player HAS pieces on the bar.
+      if (clickedIndex === BAR_POSITION) {
+        // User clicked the BAR itself.
         if (selectedPointIndex === BAR_POSITION) { // Clicking bar when bar is already selected
           setSelectedPointIndex(null); // Deselect bar
           debugLog("Deselected BAR by clicking it again", { player: gameState.currentPlayer });
@@ -636,14 +664,20 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
           setSelectedPointIndex(BAR_POSITION); // Select bar
           debugLog("Selected BAR by clicking it", { player: gameState.currentPlayer });
         }
+        return; // Handled bar click, exit
       } else {
-        debugLog("Clicked BAR but no pieces there for current player", { player: gameState.currentPlayer });
-        setSelectedPointIndex(null); // Ensure nothing is selected if bar is empty
+        // User clicked a BOARD POINT (clickedIndex is 1-24).
+        // Since they have pieces on the bar, this click is an ATTEMPT to move FROM BAR to clickedIndex.
+        // No need to check selectedPointIndex here, the 'from' is implicitly BAR_POSITION.
+        debugLog("Attempting move FROM BAR to board point", { from: BAR_POSITION, to: clickedIndex });
+        handlePieceMove(BAR_POSITION, clickedIndex); 
+        // setSelectedPointIndex(null); // handlePieceMove will clear selection if successful / or on turn end.
+        return; // Move attempted, exit
       }
-      return; // Handled bar click, exit
     }
 
-    // If a point (not BAR) is clicked
+    // Player does NOT have pieces on the bar (isCurrentPlayerBarNonEmpty is false).
+    // Proceed with normal point selection/move logic:
     if (selectedPointIndex === null) {
       // No point is currently selected, try to select this one as 'from'
       if (pointData && pointData.player === gameState.currentPlayer && pointData.count > 0) {
@@ -653,7 +687,8 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
         debugLog("Clicked invalid starting point or empty point", { clickedIndex, pointData });
       }
     } else {
-      // A point is already selected ('from' point could be a board point or BAR_POSITION)
+      // A point is already selected ('from' point could be a board point)
+      // (BAR_POSITION as selectedPointIndex is handled above if isCurrentPlayerBarNonEmpty)
       if (selectedPointIndex === clickedIndex) {
         setSelectedPointIndex(null); // De-select if clicking the same point
         debugLog("De-selected point by clicking it again", { clickedIndex });
@@ -1276,7 +1311,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
           <div className="flex flex-wrap gap-1 justify-end flex-shrink">
              {/* Add Fullscreen button */}
              {/* Only show Fullscreen button on browsers that support it (basic check) */}
-             {typeof document !== 'undefined' && (document.documentElement.requestFullscreen || (document.documentElement as any).webkitRequestFullscreen || (document.documentElement as any).mozRequestFullScreen || (document.documentElement as any).msRequestFullscreen) && (
+             {hasMounted && (document.documentElement.requestFullscreen || (document.documentElement as any).webkitRequestFullscreen || (document.documentElement as any).mozRequestFullScreen || (document.documentElement as any).msRequestFullscreen) && (
                 <Button variant="ghost" size="sm" onClick={toggleFullScreen} className="text-white p-1 sm:p-2">
                   {isFullscreen ? <Minimize className="h-4 w-4 sm:mr-1" /> : <Maximize className="h-4 w-4 sm:mr-1" />}
                   <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
@@ -1297,7 +1332,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
       </div>
 
       {/* Rotate Suggestion Banner */}
-      {showRotateSuggestion && (
+      {hasMounted && showRotateSuggestion && (
         <div className="bg-yellow-500 text-black p-2 text-center text-sm flex justify-center items-center gap-2 relative z-50"> {/* Ensure banner is on top */}
           <Smartphone className="h-4 w-4 flex-shrink-0" />
           <span>For the best experience, please rotate your device.</span>

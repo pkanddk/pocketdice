@@ -16,6 +16,8 @@ export interface Move {
   to: number;    // 1-24 for board points, BEARING_OFF_POSITION (25) for bearing off
   die: number;   // The die value being used for this move
   usesBothDice?: boolean; // Flag indicating if this move uses both dice (combined move)
+  diceUsed?: number;      // How many individual dice this move represents (for chained doubles)
+  isChainedDouble?: boolean;
 }
 
 export type DiceRoll = number[];  // Array of 1-2 dice values
