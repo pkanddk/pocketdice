@@ -1432,6 +1432,11 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                   /* This is tricky with padding-bottom for aspect ratio. */
                   /* The landscape:max-h on the parent div is the primary constraint. */
                 }
+                @media (orientation: landscape) and (max-width: 767px) { /* Targeting mobile landscape */
+                  :root {
+                    --board-aspect-ratio: 65%; /* Make board shorter (wider aspect ratio) */
+                  }
+                }
               `}</style>
               <div
                 className="absolute inset-0 bg-gradient-to-b from-gray-900 to-gray-800 rounded-lg border-2 sm:border-4 shadow-lg"
