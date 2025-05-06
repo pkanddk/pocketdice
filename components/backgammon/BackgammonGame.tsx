@@ -1305,14 +1305,14 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
         if (!showRotateSuggestion) {
             setShowRotateSuggestion(true);
         }
-        alert("Please rotate your device manually to landscape mode for the best experience.");
+        alert("For the best experience please rotate your device"); // Updated alert message
       }
     } catch (err) {
       debugLog("Error requesting fullscreen or locking orientation:", err);
       if (!showRotateSuggestion) {
         setShowRotateSuggestion(true);
       }
-      alert("Could not automatically rotate. Please rotate your device manually.");
+      alert("For the best experience please rotate your device"); // Updated alert message
     }
   };
 
@@ -1379,8 +1379,8 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
       {/* Rotate Suggestion Banner */}
       {hasMounted && showRotateSuggestion && (
         <div className="bg-yellow-500 text-black p-2 text-center text-sm flex justify-center items-center gap-2 relative z-50"> {/* Ensure banner is on top */}
-          <Smartphone className="h-4 w-4 flex-shrink-0" />
-          <span>For the best experience, please rotate your device.</span>
+          {/* Smartphone icon removed as the message is now a gameplay hint */}
+          <span>Hint: Tap a piece, then tap its destination to move!</span>
           <button
             onClick={() => {
                 setShowRotateSuggestion(false);
