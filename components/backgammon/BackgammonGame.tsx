@@ -1440,7 +1440,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                 }
                 @media (orientation: landscape) and (max-height: 500px) { /* Targeting phone-like landscape by height */
                   :root {
-                    /* --board-aspect-ratio: 55%; */ /* Temporarily commented out for diagnosis */
+                    --board-aspect-ratio: 45%; /* More aggressive squish */
                   }
                 }
               `}</style>
