@@ -425,7 +425,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   /**
    * Handles a piece move attempt
    */
-  const handlePieceMove = (fromIndex: number, toIndex: number) => {
+  const handlePieceMove = useCallback((fromIndex: number, toIndex: number) => {
     console.log(`Attempting to move piece from ${fromIndex} to ${toIndex}`);
     
     // Get the actual dice values in use
@@ -532,52 +532,45 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     } else {
       // Regular move - remove only the used die
       const usedDie = matchingMove.die;
-      const remainingDice = activeDice.filter((d, index) => {
-        // Keep dice that are not the used die, but only remove one instance
-        if (d === usedDie) {
-          // Create a new array with this die removed
-          const result = index === activeDice.findIndex(dice => dice === usedDie);
-          return !result;
-        }
-        return true;
-      });
+      const tempRemainingDice = [...activeDice]; // Create a mutable copy
+      const dieIndexToRemove = tempRemainingDice.findIndex(d => d === usedDie);
+      if (dieIndexToRemove > -1) {
+        tempRemainingDice.splice(dieIndexToRemove, 1);
+      }
       
       // Update the game state with the remaining dice
-      newGameState.remainingDice = remainingDice;
+      newGameState.remainingDice = tempRemainingDice;
       
       // Check if all dice have been used
-      if (remainingDice.length === 0) {
+      if (newGameState.remainingDice.length === 0) {
         // End turn automatically if no dice left
         newGameState.currentPlayer = newGameState.currentPlayer === BLACK ? WHITE : BLACK;
         newGameState.dice = [];
-        newGameState.remainingDice = [];
+        // newGameState.remainingDice is already empty
         newGameState.diceRolled = false;
       } else {
         // Check if there are any valid moves left with the remaining dice
-        // Clone the board for the calculation to use the updated board state
-        const updatedGameState = {
+        const updatedGameStateForCheck = {
           ...newGameState,
-          dice: remainingDice,
-          remainingDice: remainingDice,
-          diceRolled: newGameState.diceRolled,
-          board: [...newGameState.board] // Ensure we're using the updated board
+          // dice: newGameState.remainingDice, // Important: getAvailableMoves uses gameState.dice if remainingDice is empty
+          // remainingDice: newGameState.remainingDice, // already set
+          // diceRolled: newGameState.diceRolled, // already set
+          // board: [...newGameState.board] // Ensure we're using the updated board -- already using newGameState.board which is a new array
         };
         
-        console.log("Checking for remaining moves with dice:", remainingDice);
-        console.log("Using updated board state:", updatedGameState.board);
+        console.log("Checking for remaining moves with dice:", newGameState.remainingDice);
+        // console.log("Using updated board state for check:", updatedGameStateForCheck.board);
         
-        // Get available moves for the updated board state
-        const remainingMoves = BackgammonRules.getAvailableMoves(updatedGameState);
+        const remainingMoves = BackgammonRules.getAvailableMoves(updatedGameStateForCheck);
         
-        console.log("Remaining available moves:", remainingMoves.length);
+        console.log("Remaining available moves after current move:", remainingMoves.length);
         if (remainingMoves.length > 0) {
           console.log("Available moves:", remainingMoves.map(m => 
             `${m.from}→${m.to} (die ${m.die}${m.usesBothDice ? ', combined' : ''})`));
         }
         
         if (remainingMoves.length === 0) {
-          console.log('No valid moves remaining with dice', remainingDice);
-          // End turn automatically if no valid moves
+          console.log('No valid moves remaining with dice', newGameState.remainingDice);
           newGameState.currentPlayer = newGameState.currentPlayer === BLACK ? WHITE : BLACK;
           newGameState.dice = [];
           newGameState.remainingDice = [];
@@ -586,20 +579,72 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
       }
     }
     
-    // Update the game state
     setGameState(newGameState);
-    
-    // Simple force render without the recursive retry mechanism that could cause loops
+    setSelectedPointIndex(null); // Clear selection after any move attempt
     setForceRender(prev => prev + 1);
-    
-    // If moving from bar, add a one-time delayed update to ensure rendering
     if (fromIndex === BAR_POSITION) {
       setTimeout(() => {
         console.log('Delayed update after bar move to ensure rendering');
         setForceRender(prev => prev + 1);
       }, 100);
     }
-  };
+  }, [gameState, setSelectedPointIndex /* add other dependencies if needed */]);
+
+  // New click handler for points
+  const handlePointClick = useCallback((clickedIndex: number) => {
+    debugLog("Point clicked", { clickedIndex, currentSelected: selectedPointIndex, currentPlayer: gameState.currentPlayer });
+
+    const pointData = clickedIndex !== BAR_POSITION ? gameState.board[clickedIndex] : null;
+    const isCurrentPlayerBarNonEmpty = gameState.bar[gameState.currentPlayer] > 0;
+
+    if (isCurrentPlayerBarNonEmpty && selectedPointIndex !== BAR_POSITION && clickedIndex !== BAR_POSITION) {
+      debugLog("Cannot select point, player must move from bar", { player: gameState.currentPlayer, barCount: gameState.bar[gameState.currentPlayer] });
+      // Optionally, add feedback like a visual shake or small message if bar is not already selected
+      // If bar is not selected, and they click a point, maybe select the bar for them?
+      // For now, just prevent other selections and guide to bar or let bar click handle it.
+      if (gameState.bar[gameState.currentPlayer] > 0) setSelectedPointIndex(BAR_POSITION); 
+      return;
+    }
+    
+    // If clicking the BAR itself
+    if (clickedIndex === BAR_POSITION) {
+      if (gameState.bar[gameState.currentPlayer] > 0) {
+        if (selectedPointIndex === BAR_POSITION) { // Clicking bar when bar is already selected
+          setSelectedPointIndex(null); // Deselect bar
+          debugLog("Deselected BAR by clicking it again", { player: gameState.currentPlayer });
+        } else {
+          setSelectedPointIndex(BAR_POSITION); // Select bar
+          debugLog("Selected BAR by clicking it", { player: gameState.currentPlayer });
+        }
+      } else {
+        debugLog("Clicked BAR but no pieces there for current player", { player: gameState.currentPlayer });
+        setSelectedPointIndex(null); // Ensure nothing is selected if bar is empty
+      }
+      return; // Handled bar click, exit
+    }
+
+    // If a point (not BAR) is clicked
+    if (selectedPointIndex === null) {
+      // No point is currently selected, try to select this one as 'from'
+      if (pointData && pointData.player === gameState.currentPlayer && pointData.count > 0) {
+        setSelectedPointIndex(clickedIndex);
+        debugLog("Selected point as 'from'", { clickedIndex });
+      } else {
+        debugLog("Clicked invalid starting point or empty point", { clickedIndex, pointData });
+      }
+    } else {
+      // A point is already selected ('from' point could be a board point or BAR_POSITION)
+      if (selectedPointIndex === clickedIndex) {
+        setSelectedPointIndex(null); // De-select if clicking the same point
+        debugLog("De-selected point by clicking it again", { clickedIndex });
+      } else {
+        // Attempt to move from selectedPointIndex to clickedIndex (which is a board point here)
+        debugLog("Attempting move via click from selected to new point", { from: selectedPointIndex, to: clickedIndex });
+        handlePieceMove(selectedPointIndex, clickedIndex); 
+        // setSelectedPointIndex(null); // handlePieceMove will clear selection
+      }
+    }
+  }, [selectedPointIndex, gameState, handlePieceMove, setSelectedPointIndex, debugLog]);
 
   // Check for series winner
   useEffect(() => {
@@ -733,27 +778,39 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
 
   // Add the function to handle bearing off directly
   const handleBearOff = useCallback((fromIndex: number) => {
-    if (!gameState.gameStarted || gameState.remainingDice.length === 0) return; // Check remainingDice
-
-    // Validate using getAvailableMoves with remaining dice
-    const possibleMoves = BackgammonRules.getAvailableMoves({
-      ...gameState, 
-      dice: gameState.remainingDice 
-    });
-    
-    // Check if any of the possible moves is a bear-off from the clicked index
-    const bearOffMove = possibleMoves.find((move: Move) => move.from === fromIndex && move.to === BEARING_OFF_POSITION);
-
-    if (bearOffMove) {
-      console.log(`Handling direct bear off for piece ${fromIndex} using die ${bearOffMove.die}`);
-      // Pass the specific move (including the die) to handlePieceMove 
-      // handlePieceMove will find this exact move again for validation
-      handlePieceMove(fromIndex, BEARING_OFF_POSITION);
-    } else {
-      console.log(`Cannot bear off directly from ${fromIndex} with remaining dice [${gameState.remainingDice.join(", ")}]`);
+    // ... (ensure this uses selectedPointIndex if that's the new flow, or works with direct bear off clicks)
+    // For now, assume it's a direct click on a bear-off enabled piece/zone
+    if (selectedPointIndex === null && fromIndex !== BAR_POSITION) {
+        // If nothing is selected, and we are clicking a point that can bear off directly
+        const canBearOffDirectly = BackgammonRules.getAvailableMoves({ ...gameState, dice: gameState.remainingDice })
+                                      .find(m => m.from === fromIndex && m.to === BEARING_OFF_POSITION);
+        if (canBearOffDirectly) {
+            debugLog("Direct bearing off via click from point", { fromIndex });
+            handlePieceMove(fromIndex, BEARING_OFF_POSITION);
+            return;
+        }
     }
-  // Update dependencies: gameState provides all needed sub-properties
-  }, [gameState, handlePieceMove]);
+    // If a point is selected, and the click implies bearing off from that selected point
+    if (selectedPointIndex === fromIndex && fromIndex !== BAR_POSITION) { // fromIndex here is the target for bear off
+        debugLog("Attempting to bear off from selected point", { from: selectedPointIndex });
+        handlePieceMove(selectedPointIndex, BEARING_OFF_POSITION);
+        // setSelectedPointIndex(null); // handlePieceMove will clear
+    } else if (selectedPointIndex !== null && fromIndex === BEARING_OFF_POSITION) { // Clicking bear-off zone when something is selected
+        debugLog("Attempting to bear off from selected point TO bear-off zone", { from: selectedPointIndex });
+        handlePieceMove(selectedPointIndex, BEARING_OFF_POSITION);
+    }
+     else {
+      // Original logic from prompt - might still be relevant for direct drag/drop to bear-off zone
+      if (!gameState.gameStarted || gameState.remainingDice.length === 0) return;
+      const possibleMoves = BackgammonRules.getAvailableMoves({ ...gameState, dice: gameState.remainingDice });
+      const bearOffMove = possibleMoves.find((move: Move) => move.from === fromIndex && move.to === BEARING_OFF_POSITION);
+      if (bearOffMove) {
+        handlePieceMove(fromIndex, BEARING_OFF_POSITION);
+      } else {
+        console.log(`Cannot bear off directly from ${fromIndex} with remaining dice [${gameState.remainingDice.join(", ")}]`);
+      }
+    }
+  }, [gameState, handlePieceMove, selectedPointIndex, debugLog]);
 
   // Render points for a quadrant - using 1-based indexing
   const renderPoints = (quadrant: keyof typeof BOARD_LAYOUT) => {
@@ -826,7 +883,9 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
           currentPlayer={gameState.currentPlayer}
           isPlayable={isPlayable}
           onMove={handlePieceMove}
+          onPointClick={handlePointClick}
           canBearOff={canBearOffFromPoint}
+          isSelected={selectedPointIndex === position}
         />
       );
     });
@@ -1178,15 +1237,39 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
         </div>
       ) : (
         // Show Game Board Area
-        <div className="flex-grow flex-shrink-1 overflow-auto p-1 sm:p-3 flex flex-col items-center justify-center"> {/* Reduced padding */}
-          <div className="w-full max-w-4xl">
+        <div className="flex-grow flex-shrink-1 overflow-hidden p-1 sm:p-3 flex flex-col items-center justify-center landscape:py-1">
+          {/* Added landscape:py-1 to reduce vertical padding in landscape if needed */}
+          {/* The direct child of this flex container will be constrained by its parent's height (due to overflow-hidden and flex properties) */}
+          <div className="w-full max-w-4xl h-full flex flex-col justify-center"> {/* Allow this to take available height and center its content if smaller */}
             {/* Board with responsive aspect ratio */}
-            <div className="relative w-full pb-[75%] sm:pb-[50%]"> {/* Portrait: 4:3, Larger: 2:1 */}
+            {/* Applying max-height directly to the aspect ratio box's PARENT might be better */}
+            {/* Let's ensure this aspect ratio div itself doesn't grow too tall in landscape. */}
+            <div 
+              className="relative w-full landscape:max-h-[calc(100%-2.5rem-0.5rem)]" // 100% of parent - bearing off zone height - margin
+              style={{ paddingBottom: "var(--board-aspect-ratio, 75%)" }} // Default to 75% (portrait-ish)
+            >
+              {/* Custom property for aspect ratio allows easier JS/CSS adjustment if needed */}
+              <style>{`
+                @media (min-width: 640px) {
+                  :root {
+                    --board-aspect-ratio: 50%; /* Desktop/larger tablets */
+                  }
+                }
+                @media (orientation: landscape) and (max-height: 600px) { /* Small height landscape */
+                   /* For very short landscape screens, we might want an even wider aspect, or let max-h handle it */
+                  :root {
+                    /* --board-aspect-ratio: 40%; /* or adjust max-height more dynamically */
+                  }
+                  /* Ensure the board itself doesn't exceed the viewport height minus other elements */
+                  /* This is tricky with padding-bottom for aspect ratio. */
+                  /* The landscape:max-h on the parent div is the primary constraint. */
+                }
+              `}</style>
               <div
                 className="absolute inset-0 bg-gradient-to-b from-gray-900 to-gray-800 rounded-lg border-2 sm:border-4 shadow-lg"
                 style={{
                   borderColor: themeStyle.borderColor,
-                  userSelect: 'none', // Prevent text selection on the board surface
+                  userSelect: 'none',
                   WebkitUserSelect: 'none',
                   MozUserSelect: 'none',
                   msUserSelect: 'none'
@@ -1202,34 +1285,22 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                       </div>
                       <div className="w-10 relative border-l border-r border-gray-700">
                         <Bar
-                          player={WHITE} // Player 2 is White
+                          player={WHITE}
                           count={gameState.bar[WHITE]}
                           currentPlayer={gameState.currentPlayer}
                           isTopHalf={true}
                           theme={theme}
                           isPlayable={
                             gameState.gameStarted &&
-                            gameState.diceRolled && // Check if dice have been rolled this turn
+                            gameState.diceRolled &&
                             gameState.currentPlayer === WHITE &&
                             gameState.bar[WHITE] > 0 &&
                             BackgammonRules.getAvailableMoves({
                                 ...gameState,
-                                dice: gameState.remainingDice // Check with remaining dice
+                                dice: gameState.remainingDice,
                             }).some(m => m.from === BAR_POSITION)
                           }
-                          onBarClick={() => {
-                            if (gameState.currentPlayer === WHITE && gameState.bar[WHITE] > 0 && gameState.diceRolled) {
-                              const movesFromBar = BackgammonRules.getAvailableMoves({
-                                  ...gameState, dice: gameState.remainingDice
-                              }).filter(m => m.from === BAR_POSITION);
-                              if (movesFromBar.length > 0) {
-                                setSelectedPointIndex(BAR_POSITION);
-                                console.log("White Bar selected");
-                              } else {
-                                console.log("White Bar clicked, but no valid moves from bar.");
-                              }
-                            }
-                          }}
+                          onBarClick={() => handlePointClick(BAR_POSITION)}
                           isSelected={selectedPointIndex === BAR_POSITION && gameState.currentPlayer === WHITE}
                           selectedPointIndex={selectedPointIndex}
                           setSelectedPointIndex={setSelectedPointIndex}
@@ -1247,34 +1318,22 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                       </div>
                       <div className="w-10 relative border-l border-r border-gray-700">
                         <Bar
-                          player={BLACK} // Player 1 is Black
+                          player={BLACK}
                           count={gameState.bar[BLACK]}
                           currentPlayer={gameState.currentPlayer}
                           isTopHalf={false}
                           theme={theme}
                           isPlayable={
                             gameState.gameStarted &&
-                            gameState.diceRolled && // Check if dice have been rolled this turn
+                            gameState.diceRolled &&
                             gameState.currentPlayer === BLACK &&
                             gameState.bar[BLACK] > 0 &&
                             BackgammonRules.getAvailableMoves({
                                 ...gameState,
-                                dice: gameState.remainingDice // Check with remaining dice
+                                dice: gameState.remainingDice,
                             }).some(m => m.from === BAR_POSITION)
                           }
-                          onBarClick={() => {
-                            if (gameState.currentPlayer === BLACK && gameState.bar[BLACK] > 0 && gameState.diceRolled) {
-                              const movesFromBar = BackgammonRules.getAvailableMoves({
-                                  ...gameState, dice: gameState.remainingDice
-                              }).filter(m => m.from === BAR_POSITION);
-                              if (movesFromBar.length > 0) {
-                                setSelectedPointIndex(BAR_POSITION);
-                                console.log("Black Bar selected");
-                              } else {
-                                 console.log("Black Bar clicked, but no valid moves from bar.");
-                              }
-                            }
-                          }}
+                          onBarClick={() => handlePointClick(BAR_POSITION)}
                           isSelected={selectedPointIndex === BAR_POSITION && gameState.currentPlayer === BLACK}
                           selectedPointIndex={selectedPointIndex}
                           setSelectedPointIndex={setSelectedPointIndex}
@@ -1336,8 +1395,8 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
               </div>
             </div>
 
-            {/* Bearing Off Zone - Adjust height/padding */}
-            <div className="mt-2 sm:mt-3 h-8 sm:h-10 flex w-full rounded-lg overflow-hidden border border-gray-700 sm:border-2"> {/* Smaller height/border */}
+            {/* Bearing Off Zone - ensure it fits */}
+            <div className="mt-2 sm:mt-3 h-8 sm:h-10 flex w-full rounded-lg overflow-hidden border border-gray-700 sm:border-2 flex-shrink-0">
                {/* Player 1 Bearing Off Zone */}
                <div
                  className={`flex-1 flex items-center justify-start px-1 sm:px-2 space-x-1 overflow-x-auto ${BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK ? 'bg-blue-500/20 ring-1 ring-blue-500' : 'bg-gradient-to-r from-opacity-20 to-opacity-40'}`}
@@ -1346,22 +1405,29 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                     borderRight: '1px solid rgba(255,255,255,0.1)'
                   }}
                  onDragOver={(e) => {
-                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK) { // Use constant
+                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK) {
                      e.preventDefault();
                      e.dataTransfer.dropEffect = 'move';
                    }
                  }}
                  onDrop={(e) => {
-                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK) { // Use constant
+                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK) {
                      e.preventDefault();
-                     const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                      // Validate the move *before* calling handlePieceMove for drop
-                     const availableMoves = BackgammonRules.getAvailableMoves({...gameState, dice: gameState.remainingDice});
-                     const isValidBearOffDrop = availableMoves.some(move => move.from === fromIndex && move.to === BEARING_OFF_POSITION);
-                      if (isValidBearOffDrop) {
-                         handlePieceMove(fromIndex, BEARING_OFF_POSITION);
+                     if (selectedPointIndex !== null && selectedPointIndex !== BAR_POSITION) {
+                       // If a point is selected, move from there to bearing off
+                       debugLog("Bearing off from selected point via drop on zone", { from: selectedPointIndex });
+                       handlePieceMove(selectedPointIndex, BEARING_OFF_POSITION);
                      } else {
-                          console.log(`Invalid drop bear off from ${fromIndex}`);
+                       // Fallback to direct drag data if no point was pre-selected (original behavior)
+                       const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                       debugLog("Bearing off via direct drag-drop to zone", { from: fromIndex });
+                       const availableMoves = BackgammonRules.getAvailableMoves({...gameState, dice: gameState.remainingDice});
+                       const isValidBearOffDrop = availableMoves.some(move => move.from === fromIndex && move.to === BEARING_OFF_POSITION);
+                       if (isValidBearOffDrop) {
+                           handlePieceMove(fromIndex, BEARING_OFF_POSITION);
+                       } else {
+                           console.log(`Invalid drop bear off from ${fromIndex}`);
+                       }
                      }
                    }
                  }}
@@ -1386,22 +1452,29 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                     borderLeft: '1px solid rgba(255,255,255,0.1)'
                   }}
                  onDragOver={(e) => {
-                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, WHITE) && gameState.currentPlayer === WHITE) { // Use constant
+                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, WHITE) && gameState.currentPlayer === WHITE) {
                      e.preventDefault();
                      e.dataTransfer.dropEffect = 'move';
                    }
                  }}
                  onDrop={(e) => {
-                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, WHITE) && gameState.currentPlayer === WHITE) { // Use constant
+                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, WHITE) && gameState.currentPlayer === WHITE) {
                      e.preventDefault();
-                     const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                      // Validate the move *before* calling handlePieceMove for drop
-                     const availableMoves = BackgammonRules.getAvailableMoves({...gameState, dice: gameState.remainingDice});
-                     const isValidBearOffDrop = availableMoves.some(move => move.from === fromIndex && move.to === BEARING_OFF_POSITION);
-                      if (isValidBearOffDrop) {
-                         handlePieceMove(fromIndex, BEARING_OFF_POSITION);
+                     if (selectedPointIndex !== null && selectedPointIndex !== BAR_POSITION) {
+                       // If a point is selected, move from there to bearing off
+                       debugLog("Bearing off from selected point via drop on zone", { from: selectedPointIndex });
+                       handlePieceMove(selectedPointIndex, BEARING_OFF_POSITION);
                      } else {
-                          console.log(`Invalid drop bear off from ${fromIndex}`);
+                       // Fallback to direct drag data if no point was pre-selected (original behavior)
+                       const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                       debugLog("Bearing off via direct drag-drop to zone", { from: fromIndex });
+                       const availableMoves = BackgammonRules.getAvailableMoves({...gameState, dice: gameState.remainingDice});
+                       const isValidBearOffDrop = availableMoves.some(move => move.from === fromIndex && move.to === BEARING_OFF_POSITION);
+                       if (isValidBearOffDrop) {
+                           handlePieceMove(fromIndex, BEARING_OFF_POSITION);
+                       } else {
+                           console.log(`Invalid drop bear off from ${fromIndex}`);
+                       }
                      }
                    }
                  }}

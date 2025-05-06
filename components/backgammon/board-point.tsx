@@ -14,6 +14,8 @@ interface BoardPointProps {
   onMove: (fromIndex: number, toIndex: number) => void;
   canBearOff?: boolean;
   isRecentBarMove?: boolean;
+  onPointClick?: (index: number) => void;
+  isSelected?: boolean;
 }
 
 export function BoardPoint({
@@ -28,6 +30,8 @@ export function BoardPoint({
   onMove,
   canBearOff = false,
   isRecentBarMove = false,
+  onPointClick,
+  isSelected = false,
 }: BoardPointProps) {
   const themeStyle = getThemeStyle(theme);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -75,16 +79,20 @@ export function BoardPoint({
     backgroundColor: isEvenPoint ? themeStyle.lightPointColor : themeStyle.darkPointColor,
   };
   
-  // Handle click for bearing off
+  // Modified handleClick to use onPointClick if available
   const handleClick = useCallback((e: React.MouseEvent) => {
-    // Prevent event bubbling
     e.stopPropagation();
-    
-    if (canBearOff && isPlayable && player === currentPlayer) {
-      console.log(`Bearing off from point ${index}`);
-      onMove(index, 24); // Special index 24 represents bearing off
+    if (onPointClick) {
+      onPointClick(index);
+    } else {
+      // Fallback to original direct bear-off logic if onPointClick is not provided
+      // (though it should always be provided with the new changes)
+      if (canBearOff && isPlayable && player === currentPlayer) {
+        console.log(`Bearing off from point ${index} via fallback click`);
+        onMove(index, 24); // BEARING_OFF_POSITION
+      }
     }
-  }, [canBearOff, isPlayable, player, currentPlayer, index, onMove]);
+  }, [canBearOff, isPlayable, player, currentPlayer, index, onMove, onPointClick]);
   
   // Calculate the number of pieces to display and how they should stack
   const maxVisiblePieces = 5;
@@ -100,15 +108,22 @@ export function BoardPoint({
     ? 'ring-2 ring-yellow-300 shadow-lg animate-pulse'
     : '';
   
+  // Add visual highlighting for selected points
+  const selectionHighlightClass = isSelected 
+    ? 'ring-4 ring-offset-1 ring-green-500 shadow-xl' 
+    : '';
+  
   return (
     <div
       className={`relative flex-1 h-full transition-all duration-200
         ${isEvenPoint ? 'bg-black/15' : 'bg-black/5'}
         ${isDragOver ? 'bg-blue-400/30 ring-2 ring-blue-400' : ''}
-        ${canBearOff ? 'ring-1 ring-yellow-500' : ''}
-        ${pointHighlightClass}`}
+        ${canBearOff && !isSelected ? 'ring-1 ring-yellow-500' : ''}
+        ${pointHighlightClass}
+        ${selectionHighlightClass}`}
       style={{
-        backgroundColor: isDragOver ? "rgba(59, 130, 246, 0.3)" : 
+        backgroundColor: isSelected ? "rgba(34, 197, 94, 0.3)" :
+                        isDragOver ? "rgba(59, 130, 246, 0.3)" : 
                         canBearOff ? "rgba(234, 179, 8, 0.2)" : 
                         "transparent",
         transition: "all 0.2s",
