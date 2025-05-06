@@ -180,7 +180,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
 
   // New state for mobile suggestions and fullscreen
   const { isMobile, isPortrait } = useDeviceDetection();
-  const [showRotateSuggestion, setShowRotateSuggestion] = useState(false);
+  const [showGameplayHint, setShowGameplayHint] = useState(false); // Renamed from showRotateSuggestion
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [ghostPiece, setGhostPiece] = useState<GhostPieceState>({ 
     player: 0, x: 0, y: 0, visible: false, fromIndex: null, currentOverIndex: null 
@@ -837,6 +837,16 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   // bar changes, or game start/rolling status changes. Ensure diceRolled is included.
   }, [gameState.remainingDice, gameState.currentPlayer, gameState.board, gameState.bar, gameState.gameStarted, gameState.isRolling, gameState.diceRolled, switchPlayer, showNoMovesFeedback]);
 
+  // Effect to show gameplay hint once per session
+  useEffect(() => {
+    if (hasMounted) {
+      const dismissed = sessionStorage.getItem('gameplayHintDismissed');
+      if (dismissed !== 'true') {
+        setShowGameplayHint(true);
+      }
+    }
+  }, [hasMounted]);
+
   // Add the function to handle bearing off directly
   const handleBearOff = useCallback((fromIndex: number) => {
     // ... (ensure this uses selectedPointIndex if that's the new flow, or works with direct bear off clicks)
@@ -1139,22 +1149,6 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     }
   }, [gameState.currentPlayer, gameState.dice, forceRender, switchPlayer]);
 
-  // Effect to show rotation suggestion
-  useEffect(() => {
-    // Show suggestion if on mobile, in portrait, and suggestion isn't already dismissed
-    if (isMobile && isPortrait) {
-        // Check if suggestion was dismissed in this session (optional)
-        // const dismissed = sessionStorage.getItem('dismissedRotateSuggestion');
-        // if (!dismissed) {
-        //   setShowRotateSuggestion(true);
-        // }
-        // For now, always show if mobile & portrait
-        setShowRotateSuggestion(true);
-    } else {
-      setShowRotateSuggestion(false); // Hide if not mobile or not portrait
-    }
-  }, [isMobile, isPortrait]);
-
    // Effect to listen for fullscreen changes (e.g., user pressing Esc)
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -1302,16 +1296,10 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
         debugLog("Screen orientation lock requested for landscape-primary.", null);
       } else {
         debugLog("Screen orientation lock API not supported or lock is not a function.", null);
-        if (!showRotateSuggestion) {
-            setShowRotateSuggestion(true);
-        }
         alert("For the best experience please rotate your device"); // Updated alert message
       }
     } catch (err) {
       debugLog("Error requesting fullscreen or locking orientation:", err);
-      if (!showRotateSuggestion) {
-        setShowRotateSuggestion(true);
-      }
       alert("For the best experience please rotate your device"); // Updated alert message
     }
   };
@@ -1376,16 +1364,15 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
         </div>
       </div>
 
-      {/* Rotate Suggestion Banner */}
-      {hasMounted && showRotateSuggestion && (
+      {/* Rotate Suggestion Banner - now Gameplay Hint Banner */}
+      {hasMounted && showGameplayHint && ( // Use new state showGameplayHint
         <div className="bg-yellow-500 text-black p-2 text-center text-sm flex justify-center items-center gap-2 relative z-50"> {/* Ensure banner is on top */}
           {/* Smartphone icon removed as the message is now a gameplay hint */}
           <span>Hint: Tap a piece, then tap its destination to move!</span>
           <button
             onClick={() => {
-                setShowRotateSuggestion(false);
-                // Optionally save dismissal state:
-                // sessionStorage.setItem('dismissedRotateSuggestion', 'true');
+                setShowGameplayHint(false); // Use new setter
+                sessionStorage.setItem('gameplayHintDismissed', 'true'); // Save dismissal to session storage
             }}
             className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-black/10 rounded-full"
             aria-label="Dismiss rotation suggestion"
@@ -1426,7 +1413,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
             {/* Applying max-height directly to the aspect ratio box's PARENT might be better */}
             {/* Let's ensure this aspect ratio div itself doesn't grow too tall in landscape. */}
             <div 
-              className="relative w-full landscape:max-h-[calc(100%-2.5rem-0.5rem)]" // 100% of parent - bearing off zone height - margin
+              className="relative w-full landscape:max-h-[calc(100%-1.75rem)]" // Adjusted max-height: 1.5rem for h-6 + 0.25rem for mt-1
               style={{ paddingBottom: "var(--board-aspect-ratio, 75%)" }} // Default to 75% (portrait-ish)
             >
               {/* Custom property for aspect ratio allows easier JS/CSS adjustment if needed */}
@@ -1577,7 +1564,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
             </div>
 
             {/* Bearing Off Zone - ensure it fits */}
-            <div className="mt-2 sm:mt-3 landscape:mt-1 h-8 sm:h-10 flex w-full rounded-lg overflow-hidden border border-gray-700 sm:border-2 flex-shrink-0">
+            <div className="mt-2 sm:mt-3 landscape:mt-1 h-8 sm:h-10 landscape:h-6 flex w-full rounded-lg overflow-hidden border border-gray-700 sm:border-2 flex-shrink-0">
                {/* Player 1 Bearing Off Zone */}
                <div 
                  className={`flex-1 flex items-center justify-start px-1 sm:px-2 space-x-1 overflow-x-auto ${BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK ? 'bg-blue-500/20 ring-1 ring-blue-500' : 'bg-gradient-to-r from-opacity-20 to-opacity-40'}`}
