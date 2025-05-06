@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { GamePiece } from '../backgammon/game-piece';
 import { getThemeStyle } from '@/utils/theme-styles';
+import { motion } from 'framer-motion';
 
 interface BoardPointProps {
   index: number;
@@ -16,6 +17,8 @@ interface BoardPointProps {
   isRecentBarMove?: boolean;
   onPointClick?: (index: number) => void;
   isSelected?: boolean;
+  showIllegalHighlight?: boolean;
+  illegalHighlightKey?: number | null;
 }
 
 export function BoardPoint({
@@ -32,13 +35,26 @@ export function BoardPoint({
   isRecentBarMove = false,
   onPointClick,
   isSelected = false,
+  showIllegalHighlight = false,
+  illegalHighlightKey = null,
 }: BoardPointProps) {
 
   // Add log here to see props on render
-  console.log(`BoardPoint ${index} RENDER: player=${player}, count=${count}, isSelected=${isSelected}`);
+  console.log(`BoardPoint ${index} RENDER: player=${player}, count=${count}, isSelected=${isSelected}, showIllegalHighlight=${showIllegalHighlight}`);
 
   const themeStyle = getThemeStyle(theme);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showFeedbackActive, setShowFeedbackActive] = useState(false);
+  
+  useEffect(() => {
+    if (showIllegalHighlight && illegalHighlightKey) {
+      setShowFeedbackActive(true);
+      const timer = setTimeout(() => {
+        setShowFeedbackActive(false);
+      }, 700); // Duration of the feedback
+      return () => clearTimeout(timer);
+    }
+  }, [showIllegalHighlight, illegalHighlightKey]); // Depend on the key to re-trigger
   
   // Always re-render when count or player changes
   useEffect(() => {
@@ -147,6 +163,31 @@ export function BoardPoint({
       data-player={player}
       data-count={pieceCount}
     >
+      {/* Illegal Move Feedback Animation */}
+      {showFeedbackActive && (
+        <motion.div
+          key={illegalHighlightKey}
+          className="absolute inset-0 w-full h-full z-30"
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{
+            opacity: [0.7, 0],
+            scale: [1.05, 1],
+            x: [0, -3, 3, -3, 3, 0],
+          }}
+          transition={{
+            duration: 0.7,
+            times: [0, 0.8, 1],
+            x: { duration: 0.4, ease: "easeInOut"}
+          }}
+          style={{
+            backgroundColor: "rgba(255, 0, 0, 0.4)",
+            clipPath: isTopHalf
+              ? "polygon(0% 0%, 100% 0%, 50% 100%)"
+              : "polygon(50% 0%, 0% 100%, 100% 100%)",
+          }}
+        />
+      )}
+
       {/* Triangle */}
       <div
         className="absolute inset-0 w-full h-full"

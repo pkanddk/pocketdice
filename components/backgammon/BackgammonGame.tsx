@@ -187,6 +187,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   });
   const gameBoardRef = useRef<HTMLDivElement>(null); // Ref for the main board area to get offsets
   const [hasMounted, setHasMounted] = useState(false);
+  const [illegalMoveFeedback, setIllegalMoveFeedback] = useState<{ index: number | null, timestamp: number | null }>({ index: null, timestamp: null });
 
   useEffect(() => {
     setHasMounted(true);
@@ -515,6 +516,10 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
       console.log('Invalid move - not in available moves list');
       console.log('Attempted move:', {from: fromIndex, to: toIndex, distance: moveDistance});
       console.log('Available moves:', availableMoves.map(m => `${m.from}→${m.to} (die ${m.die}${m.usesBothDice ? ', combined' : ''})`));
+      // Trigger feedback for illegal move attempt on a board point
+      if (toIndex >= 1 && toIndex <= 24) { // Ensure toIndex is a valid board point
+        setIllegalMoveFeedback({ index: toIndex, timestamp: Date.now() });
+      }
       return;
     }
     
@@ -629,6 +634,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     }
     
     setGameState(newGameState);
+    setIllegalMoveFeedback({ index: null, timestamp: null }); // Clear feedback on successful or processed move
     setSelectedPointIndex(null); // Clear selection after any move attempt
 
     // Log state right after setting it
@@ -941,6 +947,8 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
           onPointClick={handlePointClick}
           canBearOff={canBearOffFromPoint}
           isSelected={selectedPointIndex === position}
+          showIllegalHighlight={illegalMoveFeedback?.index === position}
+          illegalHighlightKey={illegalMoveFeedback?.index === position ? illegalMoveFeedback.timestamp : null}
         />
       );
     });
@@ -1277,6 +1285,37 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     }
   }, [ghostPiece, handlePieceMove]); // Add dependencies
 
+  const handleRequestLandscape = async () => {
+    debugLog("Attempting to switch to landscape.", null);
+    const elem = document.documentElement;
+
+    try {
+      if (!document.fullscreenElement) {
+        debugLog("Requesting fullscreen for orientation lock.", null);
+        await elem.requestFullscreen();
+        await new Promise(resolve => setTimeout(resolve, 100)); 
+      }
+
+      if (screen.orientation && typeof screen.orientation.lock === 'function') {
+        // Revert to using 'as any' and remove @ts-expect-error
+        await (screen.orientation as any).lock('landscape-primary');
+        debugLog("Screen orientation lock requested for landscape-primary.", null);
+      } else {
+        debugLog("Screen orientation lock API not supported or lock is not a function.", null);
+        if (!showRotateSuggestion) {
+            setShowRotateSuggestion(true);
+        }
+        alert("Please rotate your device manually to landscape mode for the best experience.");
+      }
+    } catch (err) {
+      debugLog("Error requesting fullscreen or locking orientation:", err);
+      if (!showRotateSuggestion) {
+        setShowRotateSuggestion(true);
+      }
+      alert("Could not automatically rotate. Please rotate your device manually.");
+    }
+  };
+
   return (
     <div
       id="backgammon-game-container"
@@ -1310,13 +1349,19 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
           {/* Buttons - Allow shrinking/wrapping */}
           <div className="flex flex-wrap gap-1 justify-end flex-shrink">
              {/* Add Fullscreen button */}
-             {/* Only show Fullscreen button on browsers that support it (basic check) */}
              {hasMounted && (document.documentElement.requestFullscreen || (document.documentElement as any).webkitRequestFullscreen || (document.documentElement as any).mozRequestFullScreen || (document.documentElement as any).msRequestFullscreen) && (
                 <Button variant="ghost" size="sm" onClick={toggleFullScreen} className="text-white p-1 sm:p-2">
                   {isFullscreen ? <Minimize className="h-4 w-4 sm:mr-1" /> : <Maximize className="h-4 w-4 sm:mr-1" />}
                   <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
                 </Button>
              )}
+            {/* Mobile Only: Rotate to Landscape Button */} 
+            {hasMounted && isMobile && typeof screen !== 'undefined' && screen.orientation && (
+                <Button variant="ghost" size="sm" onClick={handleRequestLandscape} className="text-white p-1 sm:p-2" title="Rotate to Landscape">
+                    <Smartphone className="h-4 w-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Landscape</span>
+                </Button>
+            )}
             {/* Settings Button */}
             <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} className="text-white p-1 sm:p-2">
               <Settings className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Settings</span> {/* Hide text on small screens */}
@@ -1356,7 +1401,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
         <div className="flex-grow flex flex-col items-center justify-center p-4">
           <Button
             size="lg"
-            className="bg-green-600 hover:bg-green-700 text-white px-8 py-5 text-2xl font-bold shadow-lg animate-pulse"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-5 text-2xl font-bold shadow-lg animate-pulse" // Changed to blue
             onClick={() => {
               if (seriesWinner) {
                 alert(`The series is already over! Player ${seriesWinner} won.`);
@@ -1369,7 +1414,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
             START GAME
           </Button>
           {/* Optional: Add instructions or welcome message here */}
-           <p className="text-gray-400 mt-4 text-center">Click Start Game to begin!</p>
+           <p className="text-gray-400 mt-4 text-center">Let the games begin!</p> {/* Changed text */}
         </div>
       ) : (
         // Show Game Board Area
