@@ -7,6 +7,14 @@ try {
   // ignore error
 }
 
+// Configure next-pwa - THIS BLOCK WAS MISSING/NEEDS TO BE CORRECTLY PLACED
+const withPWA = pwa({
+  dest: 'public', // Destination directory for the service worker files
+  register: true, // Register the service worker
+  skipWaiting: true, // Skip waiting for service worker activation
+  disable: process.env.NODE_ENV === 'development', // Disable PWA in development mode
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
