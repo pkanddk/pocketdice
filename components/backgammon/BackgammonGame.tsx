@@ -837,15 +837,21 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   // bar changes, or game start/rolling status changes. Ensure diceRolled is included.
   }, [gameState.remainingDice, gameState.currentPlayer, gameState.board, gameState.bar, gameState.gameStarted, gameState.isRolling, gameState.diceRolled, switchPlayer, showNoMovesFeedback]);
 
-  // Effect to show gameplay hint once per session
+  // Effect to show gameplay hint once per session, only in portrait mode
   useEffect(() => {
     if (hasMounted) {
-      const dismissed = sessionStorage.getItem('gameplayHintDismissed');
-      if (dismissed !== 'true') {
-        setShowGameplayHint(true);
+      if (!isPortrait) { // If in landscape mode
+        setShowGameplayHint(false);
+      } else { // If in portrait mode
+        const dismissed = sessionStorage.getItem('gameplayHintDismissed');
+        if (dismissed !== 'true') {
+          setShowGameplayHint(true);
+        } else {
+          setShowGameplayHint(false); // Ensure it stays hidden if dismissed and rotated back to portrait
+        }
       }
     }
-  }, [hasMounted]);
+  }, [hasMounted, isPortrait]); // Dependencies: hasMounted, isPortrait
 
   // Add the function to handle bearing off directly
   const handleBearOff = useCallback((fromIndex: number) => {
@@ -1432,7 +1438,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                   /* This is tricky with padding-bottom for aspect ratio. */
                   /* The landscape:max-h on the parent div is the primary constraint. */
                 }
-                @media (orientation: landscape) and (max-width: 767px) { /* Targeting mobile landscape */
+                @media (orientation: landscape) and (max-height: 500px) { /* Targeting phone-like landscape by height */
                   :root {
                     --board-aspect-ratio: 65%; /* Make board shorter (wider aspect ratio) */
                   }
