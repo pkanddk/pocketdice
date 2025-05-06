@@ -1331,8 +1331,8 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
       }}
     >
       {/* Header - Add responsive classes */}
-      <div className="bg-gray-800 p-2 sm:p-3 shadow-md flex-shrink-0"> {/* Reduced padding on smallest screens */}
-        <div className="flex flex-wrap justify-between items-center gap-2">
+      <div className="bg-gray-800 p-2 sm:p-3 landscape:p-1 shadow-md flex-shrink-0"> {/* Reduced padding on smallest screens */}
+        <div className="flex flex-wrap justify-between items-center gap-2 landscape:gap-1">
           {/* Score - Allow shrinking */}
           <div className="flex items-center flex-shrink min-w-0">
             <Trophy className="h-5 w-5 text-yellow-400 mr-1 sm:mr-2" />
@@ -1418,7 +1418,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
         </div>
       ) : (
         // Show Game Board Area
-        <div className="flex-grow flex-shrink-1 overflow-hidden p-1 sm:p-3 flex flex-col items-center justify-center landscape:py-1">
+        <div className="flex-grow flex-shrink-1 overflow-hidden p-1 sm:p-3 landscape:p-0 flex flex-col items-center justify-center">
           {/* Added landscape:py-1 to reduce vertical padding in landscape if needed */}
           {/* The direct child of this flex container will be constrained by its parent's height (due to overflow-hidden and flex properties) */}
           <div className="w-full max-w-4xl h-full flex flex-col justify-center"> {/* Allow this to take available height and center its content if smaller */}
@@ -1577,7 +1577,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
             </div>
 
             {/* Bearing Off Zone - ensure it fits */}
-            <div className="mt-2 sm:mt-3 h-8 sm:h-10 flex w-full rounded-lg overflow-hidden border border-gray-700 sm:border-2 flex-shrink-0">
+            <div className="mt-2 sm:mt-3 landscape:mt-1 h-8 sm:h-10 flex w-full rounded-lg overflow-hidden border border-gray-700 sm:border-2 flex-shrink-0">
                {/* Player 1 Bearing Off Zone */}
                <div 
                  className={`flex-1 flex items-center justify-start px-1 sm:px-2 space-x-1 overflow-x-auto ${BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK ? 'bg-blue-500/20 ring-1 ring-blue-500' : 'bg-gradient-to-r from-opacity-20 to-opacity-40'}`}
