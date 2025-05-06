@@ -169,6 +169,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   const [scores, setScores] = useState<{ 1: number; 2: number }>({ 1: 0, 2: 0 });
   const [theme, setTheme] = useState("classic");
   const themeStyle = getThemeStyle(theme);
+  console.log("[Theme Debug] Current theme:", theme, "Styles:", themeStyle); // Log current theme and its styles
   const [gameNumber, setGameNumber] = useState(1);
   const [seriesWinner, setSeriesWinner] = useState<Player | null>(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
@@ -195,9 +196,13 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
 
   // New useEffect to set theme to "russian" if player name is "Elia"
   useEffect(() => {
-    if (playerNames && playerNames.some(name => name.toLowerCase() === "elia")) {
-      setTheme("russian");
-      debugLog("Player name 'Elia' detected, setting theme to Russian.", playerNames);
+    console.log("[Theme Check useEffect] Running. Player names:", playerNames);
+    if (playerNames && playerNames.some(name => name.trim().toLowerCase() === "elia")) {
+      setTheme("russia"); // Corrected to "russia" to match the key in theme-styles.ts
+      debugLog("Player name 'Elia' (trimmed/lowercased) detected, setting theme to Russia.", playerNames);
+    } else if (playerNames) {
+      // Optional: Log if names are present but no match, to confirm the hook ran
+      console.log("[Theme Check useEffect] Names processed, no 'Elia' match. Names:", playerNames.map(n => n.trim().toLowerCase()));
     }
   }, [playerNames, setTheme]); // setTheme is stable, playerNames is the key dependency
 

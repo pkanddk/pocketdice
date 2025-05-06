@@ -69,6 +69,12 @@ export default function HomePage() {
 
   // Effect to manage Save to Home Screen modal display
   useEffect(() => {
+    // Check if running as a PWA (standalone mode)
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setShowSaveModal(false); // Don't show if already a PWA
+      return;
+    }
+
     const lastSeenTimestamp = localStorage.getItem('lastSeenSaveModalTimestamp');
     const sevenDaysInMillis = 7 * 24 * 60 * 60 * 1000;
 
