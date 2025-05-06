@@ -128,6 +128,15 @@ function useDeviceDetection() {
   return { isMobile, isPortrait };
 }
 
+interface GhostPieceState {
+  player: Player | 0; // 0 for no player, or Player type
+  x: number;
+  y: number;
+  visible: boolean;
+  fromIndex: number | null; // Original index of the piece being dragged
+  currentOverIndex: number | null; // Index of the point the ghost is currently over
+}
+
 export default function BackgammonGame({ playerNames = [] }: { playerNames?: string[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -173,6 +182,10 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   const { isMobile, isPortrait } = useDeviceDetection();
   const [showRotateSuggestion, setShowRotateSuggestion] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [ghostPiece, setGhostPiece] = useState<GhostPieceState>({ 
+    player: 0, x: 0, y: 0, visible: false, fromIndex: null, currentOverIndex: null 
+  });
+  const gameBoardRef = useRef<HTMLDivElement>(null); // Ref for the main board area to get offsets
 
   // Force render state to handle updates
   useEffect(() => {
@@ -1141,6 +1154,87 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
      // State update relies on the event listener now
   };
 
+  // Custom drag and drop handlers
+  const handlePiecePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>, fromIndex: number, piecePlayer: Player) => {
+    // Ensure it's the current player's piece and there are dice rolled, etc.
+    // This check should be similar to what determines if a piece is `isMovable` in GamePiece
+    const point = fromIndex === BAR_POSITION ? null : gameState.board[fromIndex];
+    const isBarPiece = fromIndex === BAR_POSITION && gameState.bar[piecePlayer] > 0;
+    const isBoardPiece = point && point.player === piecePlayer && point.count > 0;
+    const isTurn = gameState.currentPlayer === piecePlayer && gameState.diceRolled && gameState.remainingDice.length > 0;
+
+    if (isTurn && (isBarPiece || isBoardPiece)) {
+      event.preventDefault(); // Prevent default actions like text selection or native drag
+      event.currentTarget.setPointerCapture(event.pointerId); // Capture pointer events to this element
+
+      setGhostPiece({
+        player: piecePlayer,
+        x: event.clientX,
+        y: event.clientY,
+        visible: true,
+        fromIndex: fromIndex,
+        currentOverIndex: null,
+      });
+
+      // Add global listeners
+      window.addEventListener('pointermove', handleGlobalPointerMove);
+      window.addEventListener('pointerup', handleGlobalPointerUp);
+      window.addEventListener('pointercancel', handleGlobalPointerUp); // Also handle cancel
+      debugLog("Pointer Down & Custom Drag Start", { fromIndex, player: piecePlayer, clientX: event.clientX, clientY: event.clientY });
+    }
+  }, [gameState]); // Add other dependencies as needed
+
+  const handleGlobalPointerMove = useCallback((event: PointerEvent) => {
+    if (ghostPiece.visible) {
+      event.preventDefault();
+      setGhostPiece(prev => ({
+        ...prev,
+        x: event.clientX,
+        y: event.clientY,
+      }));
+
+      // Basic drop target detection (can be improved)
+      let targetElement = document.elementFromPoint(event.clientX, event.clientY);
+      let newOverIndex: number | null = null;
+      while(targetElement) {
+        if (targetElement.getAttribute('data-point-index')) {
+          newOverIndex = parseInt(targetElement.getAttribute('data-point-index')!, 10);
+          break;
+        } else if (targetElement.getAttribute('data-bear-off-zone-player') === String(ghostPiece.player)) {
+          newOverIndex = BEARING_OFF_POSITION; // Special index for bearing off
+          break;
+        }
+        targetElement = targetElement.parentElement;
+      }
+      if (newOverIndex !== ghostPiece.currentOverIndex) {
+        setGhostPiece(prev => ({ ...prev, currentOverIndex: newOverIndex }));
+        // debugLog("Ghost over target", { newOverIndex });
+      }
+    }
+  }, [ghostPiece.visible, ghostPiece.player, ghostPiece.currentOverIndex]);
+
+  const handleGlobalPointerUp = useCallback((event: PointerEvent) => {
+    if (ghostPiece.visible) {
+      event.preventDefault();
+      // event.currentTarget.releasePointerCapture(event.pointerId); // Release pointer capture from the original element
+      // Note: Releasing capture might need to be done on the element that captured it initially
+      // This will be handled by the browser automatically when the pointerup event fires on window if element is removed/hidden.
+
+      debugLog("Pointer Up & Custom Drag End", { from: ghostPiece.fromIndex, to: ghostPiece.currentOverIndex, player: ghostPiece.player });
+      if (ghostPiece.fromIndex !== null && ghostPiece.currentOverIndex !== null && ghostPiece.fromIndex !== ghostPiece.currentOverIndex) {
+        handlePieceMove(ghostPiece.fromIndex, ghostPiece.currentOverIndex);
+      }
+      
+      setGhostPiece({ player: 0, x: 0, y: 0, visible: false, fromIndex: null, currentOverIndex: null });
+      setSelectedPointIndex(null); // Clear any tap-selection
+
+      // Remove global listeners
+      window.removeEventListener('pointermove', handleGlobalPointerMove);
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('pointercancel', handleGlobalPointerUp);
+    }
+  }, [ghostPiece, handlePieceMove]); // Add dependencies
+
   return (
     <div
       id="backgammon-game-container"
@@ -1398,35 +1492,43 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
             {/* Bearing Off Zone - ensure it fits */}
             <div className="mt-2 sm:mt-3 h-8 sm:h-10 flex w-full rounded-lg overflow-hidden border border-gray-700 sm:border-2 flex-shrink-0">
                {/* Player 1 Bearing Off Zone */}
-               <div
+               <div 
                  className={`flex-1 flex items-center justify-start px-1 sm:px-2 space-x-1 overflow-x-auto ${BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK ? 'bg-blue-500/20 ring-1 ring-blue-500' : 'bg-gradient-to-r from-opacity-20 to-opacity-40'}`}
                  style={{
-                    background: `linear-gradient(to right, ${themeStyle.player1Color}22, ${themeStyle.player1Color}44)`,
-                    borderRight: '1px solid rgba(255,255,255,0.1)'
-                  }}
+                   background: `linear-gradient(to right, ${themeStyle.player1Color}22, ${themeStyle.player1Color}44)`,
+                   borderRight: '1px solid rgba(255,255,255,0.1)'
+                 }}
+                 data-bear-off-zone-player={String(BLACK)}
                  onDragOver={(e) => {
+                   // Keep existing HTML5 drag over logic for compatibility if needed, 
+                   // but custom DND won't use it directly
                    if (BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK) {
                      e.preventDefault();
                      e.dataTransfer.dropEffect = 'move';
                    }
                  }}
                  onDrop={(e) => {
+                   // Keep existing HTML5 drop logic for compatibility if needed
                    if (BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK) {
                      e.preventDefault();
+                     // This logic might need adjustment based on how custom DND vs HTML5 DND interact
+                     // For now, retain the logic that checks selectedPointIndex first
                      if (selectedPointIndex !== null && selectedPointIndex !== BAR_POSITION) {
-                       // If a point is selected, move from there to bearing off
                        debugLog("Bearing off from selected point via drop on zone", { from: selectedPointIndex });
                        handlePieceMove(selectedPointIndex, BEARING_OFF_POSITION);
                      } else {
-                       // Fallback to direct drag data if no point was pre-selected (original behavior)
                        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                       debugLog("Bearing off via direct drag-drop to zone", { from: fromIndex });
-                       const availableMoves = BackgammonRules.getAvailableMoves({...gameState, dice: gameState.remainingDice});
-                       const isValidBearOffDrop = availableMoves.some(move => move.from === fromIndex && move.to === BEARING_OFF_POSITION);
-                       if (isValidBearOffDrop) {
-                           handlePieceMove(fromIndex, BEARING_OFF_POSITION);
+                       if (!isNaN(fromIndex)) { // Check if parsing was successful
+                         debugLog("Bearing off via direct HTML5 drag-drop to zone", { from: fromIndex });
+                         const availableMoves = BackgammonRules.getAvailableMoves({...gameState, dice: gameState.remainingDice});
+                         const isValidBearOffDrop = availableMoves.some(move => move.from === fromIndex && move.to === BEARING_OFF_POSITION);
+                         if (isValidBearOffDrop) {
+                             handlePieceMove(fromIndex, BEARING_OFF_POSITION);
+                         } else {
+                             console.log(`Invalid HTML5 drop bear off from ${fromIndex}`);
+                         }
                        } else {
-                           console.log(`Invalid drop bear off from ${fromIndex}`);
+                           console.error("Failed to parse fromIndex from dataTransfer");
                        }
                      }
                    }
@@ -1448,9 +1550,10 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                 <div
                  className={`flex-1 flex items-center justify-start px-1 sm:px-2 space-x-1 overflow-x-auto ${BackgammonRules.canBearOff(gameState.board, gameState.bar, WHITE) && gameState.currentPlayer === WHITE ? 'bg-blue-500/20 ring-1 ring-blue-500' : 'bg-gradient-to-r from-opacity-20 to-opacity-40'}`}
                  style={{
-                    background: `linear-gradient(to right, ${themeStyle.player2Color}22, ${themeStyle.player2Color}44)`,
-                    borderLeft: '1px solid rgba(255,255,255,0.1)'
-                  }}
+                   background: `linear-gradient(to right, ${themeStyle.player2Color}22, ${themeStyle.player2Color}44)`,
+                   borderLeft: '1px solid rgba(255,255,255,0.1)'
+                 }}
+                 data-bear-off-zone-player={String(WHITE)}
                  onDragOver={(e) => {
                    if (BackgammonRules.canBearOff(gameState.board, gameState.bar, WHITE) && gameState.currentPlayer === WHITE) {
                      e.preventDefault();
@@ -1461,19 +1564,21 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                    if (BackgammonRules.canBearOff(gameState.board, gameState.bar, WHITE) && gameState.currentPlayer === WHITE) {
                      e.preventDefault();
                      if (selectedPointIndex !== null && selectedPointIndex !== BAR_POSITION) {
-                       // If a point is selected, move from there to bearing off
                        debugLog("Bearing off from selected point via drop on zone", { from: selectedPointIndex });
                        handlePieceMove(selectedPointIndex, BEARING_OFF_POSITION);
                      } else {
-                       // Fallback to direct drag data if no point was pre-selected (original behavior)
                        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                       debugLog("Bearing off via direct drag-drop to zone", { from: fromIndex });
-                       const availableMoves = BackgammonRules.getAvailableMoves({...gameState, dice: gameState.remainingDice});
-                       const isValidBearOffDrop = availableMoves.some(move => move.from === fromIndex && move.to === BEARING_OFF_POSITION);
-                       if (isValidBearOffDrop) {
-                           handlePieceMove(fromIndex, BEARING_OFF_POSITION);
+                        if (!isNaN(fromIndex)) { // Check if parsing was successful
+                           debugLog("Bearing off via direct HTML5 drag-drop to zone", { from: fromIndex });
+                           const availableMoves = BackgammonRules.getAvailableMoves({...gameState, dice: gameState.remainingDice});
+                           const isValidBearOffDrop = availableMoves.some(move => move.from === fromIndex && move.to === BEARING_OFF_POSITION);
+                           if (isValidBearOffDrop) {
+                               handlePieceMove(fromIndex, BEARING_OFF_POSITION);
+                           } else {
+                               console.log(`Invalid HTML5 drop bear off from ${fromIndex}`);
+                           }
                        } else {
-                           console.log(`Invalid drop bear off from ${fromIndex}`);
+                            console.error("Failed to parse fromIndex from dataTransfer");
                        }
                      }
                    }
@@ -1493,6 +1598,26 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Ghost Piece for Custom Drag and Drop */}
+      {ghostPiece.visible && ghostPiece.player !== 0 && (
+        <div 
+          className="fixed pointer-events-none z-[100]" // High z-index, ignore pointer events itself
+          style={{
+            left: ghostPiece.x - 18, // Center the ghost piece (half of 36px)
+            top: ghostPiece.y - 18,   // Center the ghost piece
+          }}
+        >
+          <GamePiece 
+            player={ghostPiece.player}
+            index={-1} // Special index for ghost, not a real point
+            isCurrentPlayer={true} // Visually treat as current player's piece
+            canMove={true} // Visually treat as movable
+            theme={theme} 
+            onMove={() => {}} // Ghost doesn't trigger moves itself
+          />
         </div>
       )}
 

@@ -15,6 +15,7 @@ export interface GamePieceProps {
   onMove: (fromIndex: number, toIndex: number) => void;
   theme?: string;
   dice?: number[];
+  onPiecePointerDown?: (event: React.PointerEvent<HTMLDivElement>, fromIndex: number, player: number) => void;
 }
 
 export function GamePiece({
@@ -26,56 +27,29 @@ export function GamePiece({
   stacked = false,
   onMove,
   theme = 'classic',
-  dice = []
+  dice = [],
+  onPiecePointerDown
 }: GamePieceProps) {
-  const [isDragging, setIsDragging] = useState(false);
   const themeStyle = getThemeStyle(theme);
   
   // Is this piece movable?
   const isMovable = (canMove || canBearOff) && isCurrentPlayer;
   
-  // Handle click to bear off
+  // Handle click for tap-to-select/move or bearing off (now handled by BoardPoint/Game)
   const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (canBearOff && isCurrentPlayer) {
-      console.log(`Clicking to bear off piece at ${index}`);
-      onMove(index, BEARING_OFF_POSITION); // Use the constant for bearing off
-    }
+    e.stopPropagation(); // Still important
+    // Direct bear off via click is now handled by BoardPoint's logic or Game logic
+    // if (canBearOff && isCurrentPlayer) { ... }
+    // Tap-to-select is handled by BoardPoint click
   };
 
-  // Improved drag start handler with better data transfer
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-    if (!isMovable) {
-      e.preventDefault();
-      return;
-    }
-    
-    console.log("Starting drag:", { index, player, canBearOff });
-    
-    // Set data for transfer
-    e.dataTransfer.setData("text/plain", index.toString());
-    e.dataTransfer.effectAllowed = 'move';
-    
-    // Create a ghost drag image - makes dragging more visible
-    const dragImage = document.createElement('div');
-    dragImage.style.width = '30px';
-    dragImage.style.height = '30px';
-    dragImage.style.borderRadius = '50%';
-    dragImage.style.backgroundColor = player === 1 ? '#f8f8f0' : '#2d2d2d';
-    dragImage.style.opacity = '0.8';
-    document.body.appendChild(dragImage);
-    
-    // Set custom drag image and position
-    e.dataTransfer.setDragImage(dragImage, 15, 15);
-    
-    // Clean up the temporary element after a short delay
-    setTimeout(() => {
-      document.body.removeChild(dragImage);
-    }, 0);
-    
-    setIsDragging(true);
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (isMovable && onPiecePointerDown) {
+        onPiecePointerDown(event, index, player);
+    } 
+    // Removed else if for now, as the main purpose is drag initiation
   };
-  
+
   // Fallback colors in case theme styles are missing
   const playerColor = player === 1 
     ? themeStyle.player1Color || "#f8f8f0" 
@@ -125,69 +99,54 @@ export function GamePiece({
     <div 
       className="relative touch-manipulation"
       style={{ 
-        zIndex: isDragging ? 50 : isMovable ? 30 : 20,
-        touchAction: 'none', // Helps with touch devices
-        willChange: 'transform', // Performance optimization
-        transform: 'translate3d(0,0,0)', // Force GPU acceleration
-        display: 'block', // Always display
-        overflow: 'visible', // Show everything
-        opacity: 1, // Ensure visibility
+        zIndex: isMovable ? 30 : 20, // Keep basic stacking for movable pieces
+        touchAction: 'none',
+        willChange: 'transform',
+        transform: 'translate3d(0,0,0)',
+        display: 'block',
+        overflow: 'visible',
+        opacity: 1, // Could potentially set opacity to 0.5 if piece is being dragged (handled by parent now)
       }}
-      onClick={handleClick}
       data-player={player}
       data-index={index}
       data-movable={isMovable}
+      onPointerDown={handlePointerDown}
     >
-      {/* Draggable container wrapper */}
-      <div
-        draggable={isMovable}
-        onDragStart={handleDragStart}
-        onDragEnd={() => setIsDragging(false)}
-        className={`${pieceSize} touch-manipulation select-none overflow-visible`}
+      <motion.div
+        className={`${pieceSize} touch-manipulation select-none overflow-visible rounded-full flex items-center justify-center 
+          ${isMovable ? 'cursor-grab hover:ring-2 hover:ring-blue-400' : 'cursor-default'}
+          ${canBearOff ? 'ring-2 ring-yellow-400' : ''}
+          ${canMove && !canBearOff ? 'ring-1 ring-blue-400' : ''}
+        `}
         style={{ 
-          cursor: isMovable ? 'grab' : 'default',
-          touchAction: 'none', // Helps with touch devices
-          pointerEvents: 'auto', // Ensure clicks work
-          visibility: 'visible', // Always visible
+          touchAction: 'none', 
+          pointerEvents: 'auto',
+          visibility: 'visible', 
+          backgroundColor: playerColor,
+          boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+          position: 'relative', 
         }}
+        whileHover={isMovable ? { scale: 1.08 } : {}}
+        animate={canBearOff ? {
+          y: [0, -3, 0],
+          transition: { repeat: Infinity, duration: 1.5 }
+        } : {}}
       >
-        {/* Main piece container */}
-        <motion.div
-          className={`${pieceSize} rounded-full flex items-center justify-center overflow-visible
-            ${isMovable ? 'cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-blue-400' : 'cursor-default'}
-            ${canBearOff ? 'ring-2 ring-yellow-400' : ''}
-            ${canMove && !canBearOff ? 'ring-1 ring-blue-400' : ''}
-          `}
-          style={{
-            backgroundColor: playerColor,
-            boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
-            visibility: 'visible', // Always visible
-            position: 'relative', // Establish stacking context
-          }}
-          whileHover={isMovable ? { scale: 1.08 } : {}}
-          animate={canBearOff ? {
-            y: [0, -3, 0],
-            transition: { repeat: Infinity, duration: 1.5 }
-          } : {}}
-        >
-          {/* Inner circle for design */}
-          <div 
-            className={`${innerSize} rounded-full`} 
-            style={{ 
-              border: `2px solid ${player === 1 ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.15)'}`,
-              background: playerColor,
-              visibility: 'visible', // Always visible
-            }} 
-          />
-          
-          {/* Bearing off indicator - simplified for mobile */}
-          {canBearOff && (
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center text-[10px] font-bold animate-pulse z-50">
-              ↗
-            </div>
-          )}
-        </motion.div>
-      </div>
+        <div 
+          className={`${innerSize} rounded-full pointer-events-none`}
+          style={{ 
+            border: `2px solid ${player === 1 ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.15)'}`,
+            background: playerColor,
+            visibility: 'visible',
+          }} 
+        />
+        
+        {canBearOff && (
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center text-[10px] font-bold animate-pulse z-50 pointer-events-none">
+            ↗
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 } 
