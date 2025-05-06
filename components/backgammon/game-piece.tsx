@@ -118,8 +118,8 @@ export function GamePiece({
   }, [player, index, canMove]);
 
   // Make pieces very compact but still visible
-  const pieceSize = "w-8 h-8 min-w-[2rem] min-h-[2rem]"; // Slightly larger with minimums
-  const innerSize = "w-6 h-6 min-w-[1.5rem] min-h-[1.5rem]"; // Increased inner size
+  const pieceSize = "w-9 h-9 min-w-[2.25rem] min-h-[2.25rem]"; // Was w-8 h-8 (32px), now 36px
+  const innerSize = "w-7 h-7 min-w-[1.75rem] min-h-[1.75rem]"; // Was w-6 h-6 (24px), now 28px
   
   return (
     <div 
