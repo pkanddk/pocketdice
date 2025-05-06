@@ -1083,13 +1083,17 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   };
 
   return (
-    <div 
-      id="backgammon-game-container" 
+    <div
+      id="backgammon-game-container"
       className="bg-gray-900 w-full"
-      style={{ 
+      style={{
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
+        userSelect: 'none', // Prevent text selection on the whole game area
+        WebkitUserSelect: 'none', // Safari
+        MozUserSelect: 'none', // Firefox
+        msUserSelect: 'none' // IE/Edge
       }}
     >
       {/* Header - Add responsive classes */}
@@ -1179,8 +1183,14 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
             {/* Board with responsive aspect ratio */}
             <div className="relative w-full pb-[75%] sm:pb-[50%]"> {/* Portrait: 4:3, Larger: 2:1 */}
               <div
-                className="absolute inset-0 bg-gradient-to-b from-gray-900 to-gray-800 rounded-lg border-2 sm:border-4 shadow-lg" // Thinner border on mobile
-                style={{ borderColor: themeStyle.borderColor }}
+                className="absolute inset-0 bg-gradient-to-b from-gray-900 to-gray-800 rounded-lg border-2 sm:border-4 shadow-lg"
+                style={{
+                  borderColor: themeStyle.borderColor,
+                  userSelect: 'none', // Prevent text selection on the board surface
+                  WebkitUserSelect: 'none',
+                  MozUserSelect: 'none',
+                  msUserSelect: 'none'
+                }}
               >
                 <div className="h-full flex">
                   {/* Left half */}

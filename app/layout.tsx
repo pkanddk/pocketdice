@@ -10,6 +10,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Pocket Score",
   description: "Your go-to scoring app",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

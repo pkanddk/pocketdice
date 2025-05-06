@@ -113,6 +113,10 @@ export function BoardPoint({
                         "transparent",
         transition: "all 0.2s",
         zIndex: isDragOver ? 20 : 1, // Increase z-index when dragging over
+        userSelect: 'none', // Prevent text selection
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none'
       }}
       onDragOver={handleDragOver}
       onDragEnter={handleDragOver}
