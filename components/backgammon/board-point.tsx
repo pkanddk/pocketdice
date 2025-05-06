@@ -33,6 +33,10 @@ export function BoardPoint({
   onPointClick,
   isSelected = false,
 }: BoardPointProps) {
+
+  // Add log here to see props on render
+  console.log(`BoardPoint ${index} RENDER: player=${player}, count=${count}, isSelected=${isSelected}`);
+
   const themeStyle = getThemeStyle(theme);
   const [isDragOver, setIsDragOver] = useState(false);
   
@@ -110,7 +114,7 @@ export function BoardPoint({
   
   // Add visual highlighting for selected points
   const selectionHighlightClass = isSelected 
-    ? 'ring-4 ring-offset-1 ring-green-500 shadow-xl' 
+    ? 'ring-4 ring-offset-1 ring-blue-600 shadow-xl'
     : '';
   
   return (
@@ -122,7 +126,7 @@ export function BoardPoint({
         ${pointHighlightClass}
         ${selectionHighlightClass}`}
       style={{
-        backgroundColor: isSelected ? "rgba(34, 197, 94, 0.3)" :
+        backgroundColor: isSelected ? "rgba(37, 99, 235, 0.4)" :
                         isDragOver ? "rgba(59, 130, 246, 0.3)" : 
                         canBearOff ? "rgba(234, 179, 8, 0.2)" : 
                         "transparent",

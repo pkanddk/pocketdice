@@ -594,6 +594,13 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     
     setGameState(newGameState);
     setSelectedPointIndex(null); // Clear selection after any move attempt
+
+    // Log state right after setting it
+    console.log("State set after move attempt:", JSON.stringify(newGameState));
+    if (toIndex !== BEARING_OFF_POSITION && toIndex !== BAR_POSITION) {
+       console.log(`Target point ${toIndex} state AFTER setGameState:`, JSON.stringify(newGameState.board[toIndex]));
+    }
+
     setForceRender(prev => prev + 1);
     if (fromIndex === BAR_POSITION) {
       setTimeout(() => {
