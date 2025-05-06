@@ -114,7 +114,7 @@ export function BoardPoint({
   
   // Add visual highlighting for selected points
   const selectionHighlightClass = isSelected 
-    ? 'ring-4 ring-offset-1 ring-blue-600 shadow-xl'
+    ? 'ring-2 ring-blue-400 shadow-lg' // Lighter blue, thinner ring, softer shadow
     : '';
   
   return (
@@ -126,13 +126,14 @@ export function BoardPoint({
         ${pointHighlightClass}
         ${selectionHighlightClass}`}
       style={{
-        backgroundColor: isSelected ? "rgba(37, 99, 235, 0.4)" :
+        backgroundColor: isSelected ? "rgba(96, 165, 250, 0.25)" : // Lighter, more transparent blue (blue-400 @ 0.25 opacity)
                         isDragOver ? "rgba(59, 130, 246, 0.3)" : 
                         canBearOff ? "rgba(234, 179, 8, 0.2)" : 
                         "transparent",
-        transition: "all 0.2s",
-        zIndex: isDragOver ? 20 : 1, // Increase z-index when dragging over
-        userSelect: 'none', // Prevent text selection
+        // boxShadow: isDragOver ? 'inset 0 0 8px rgba(59, 130, 246, 0.4)' : 'none', // Removed isSelected boxShadow for now
+        transition: "all 0.2s", 
+        zIndex: isDragOver || isSelected ? 20 : 1, 
+        userSelect: 'none',
         WebkitUserSelect: 'none',
         MozUserSelect: 'none',
         msUserSelect: 'none'
