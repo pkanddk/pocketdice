@@ -211,7 +211,7 @@ export function BoardPoint({
       {pieceCount > 0 && (
         <div
           className={`absolute inset-0 flex flex-col items-center ${
-            isTopHalf ? "justify-start pt-1" : "justify-end pb-1"
+            isTopHalf ? "justify-start" : "justify-end pb-1"
           } pointer-events-none z-20`}
         >
           {Array.from({ length: Math.min(pieceCount, maxVisiblePieces) }).map((_, i) => (

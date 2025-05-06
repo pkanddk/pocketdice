@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: "Pocket Score",
   description: "Your go-to scoring app",
   manifest: "/manifest.json",
+  themeColor: "#0F172A",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any", type: "image/x-icon" },
