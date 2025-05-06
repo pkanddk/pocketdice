@@ -193,6 +193,14 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     setHasMounted(true);
   }, []);
 
+  // New useEffect to set theme to "russian" if player name is "Elia"
+  useEffect(() => {
+    if (playerNames && playerNames.some(name => name.toLowerCase() === "elia")) {
+      setTheme("russian");
+      debugLog("Player name 'Elia' detected, setting theme to Russian.", playerNames);
+    }
+  }, [playerNames, setTheme]); // setTheme is stable, playerNames is the key dependency
+
   // Force render state to handle updates
   useEffect(() => {
     if (gameState.gameStarted) {
@@ -1424,15 +1432,20 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
             >
               {/* Custom property for aspect ratio allows easier JS/CSS adjustment if needed */}
               <style>{`
-                @media (min-width: 640px) {
+                @media (min-width: 640px) { /* sm breakpoint and up (desktop/larger tablets) */
                   :root {
-                    --board-aspect-ratio: 50%; /* Desktop/larger tablets */
+                    --board-aspect-ratio: 50%;
+                  }
+                }
+                @media (orientation: portrait) and (max-width: 639px) { /* Mobile portrait */
+                  :root {
+                    --board-aspect-ratio: 85%; /* Make board taller in mobile portrait */
                   }
                 }
                 @media (orientation: landscape) and (max-height: 600px) { /* Small height landscape */
                    /* For very short landscape screens, we might want an even wider aspect, or let max-h handle it */
                   :root {
-                    /* --board-aspect-ratio: 40%; /* or adjust max-height more dynamically */
+                    /* --board-aspect-ratio: 40%; */ /* or adjust max-height more dynamically */
                   }
                   /* Ensure the board itself doesn't exceed the viewport height minus other elements */
                   /* This is tricky with padding-bottom for aspect ratio. */
@@ -1440,7 +1453,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                 }
                 @media (orientation: landscape) and (max-height: 500px) { /* Targeting phone-like landscape by height */
                   :root {
-                    --board-aspect-ratio: 45%; /* More aggressive squish */
+                    --board-aspect-ratio: 40%; /* More aggressive squish - now 40% */
                   }
                 }
               `}</style>
