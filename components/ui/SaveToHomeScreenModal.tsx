@@ -13,15 +13,17 @@ interface SaveToHomeScreenModalProps {
 
 const SaveToHomeScreenModal: React.FC<SaveToHomeScreenModalProps> = ({ isOpen, onClose }) => {
   const [os, setOs] = useState<'ios' | 'android' | 'other'>('other');
-  // const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent); // Unused variable
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    if (/iphone|ipad|ipod/.test(userAgent)) {
-      setOs('ios');
-    } else if (/android/.test(userAgent)) {
-      setOs('android');
+    if (typeof window !== 'undefined') {
+      setIsStandalone(window.matchMedia('(display-mode: standalone)').matches);
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      if (/iphone|ipad|ipod/.test(userAgent)) {
+        setOs('ios');
+      } else if (/android/.test(userAgent)) {
+        setOs('android');
+      }
     }
   }, []);
 
