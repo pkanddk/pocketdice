@@ -2,6 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { X, Smartphone, Download, Share, PlusSquare } from 'lucide-react';
+// import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'; // Unused imports
+// import { Button } from '@/components/ui/button'; // Unused import
+// import { AppWindow } from 'lucide-react'; // Unused import
 
 interface SaveToHomeScreenModalProps {
   isOpen: boolean;
@@ -10,6 +13,8 @@ interface SaveToHomeScreenModalProps {
 
 const SaveToHomeScreenModal: React.FC<SaveToHomeScreenModalProps> = ({ isOpen, onClose }) => {
   const [os, setOs] = useState<'ios' | 'android' | 'other'>('other');
+  // const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent); // Unused variable
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
   useEffect(() => {
     const userAgent = window.navigator.userAgent.toLowerCase();
@@ -20,24 +25,30 @@ const SaveToHomeScreenModal: React.FC<SaveToHomeScreenModalProps> = ({ isOpen, o
     }
   }, []);
 
+  if (isStandalone) {
+    return null; // Don't show the modal if already running as a standalone app
+  }
+
   if (!isOpen) return null;
 
   const iosInstructions = (
     <>
-      <p className="mb-2">1. Tap the <Share className="inline-block h-5 w-5 mx-1" /> button in your browser's toolbar.</p>
-      <p>2. Scroll down and tap on <PlusSquare className="inline-block h-5 w-5 mx-1" /> 'Add to Home Screen'.</p>
+      <p className="mb-2">1. Tap the <Share className="inline-block h-5 w-5 mx-1" /> button in Safari&apos;s toolbar.</p>
+      <p>2. Scroll down and tap on <PlusSquare className="inline-block h-5 w-5 mx-1" /> &apos;Add to Home Screen&apos;.</p>
+      <p>3. Tap &apos;Add&apos; in the top right corner.</p>
     </>
   );
 
   const androidInstructions = (
     <>
       <p className="mb-2">1. Tap the <Download className="inline-block h-5 w-5 mx-1" /> icon or the three dots <Smartphone className="inline-block h-5 w-5 rotate-90 mx-1" /> (menu) in your browser.</p>
-      <p>2. Look for an option like 'Install app', 'Add to Home screen', or 'Save to device'.</p>
+      <p>2. Look for an option like &apos;Install app&apos;, &apos;Add to Home screen&apos;, or &apos;Save to device&apos;.</p>
+      <p>3. Follow the prompts to install.</p>
     </>
   );
 
   const generalInstructions = (
-    <p className="mb-2">Check your browser's menu for an option to 'Add to Home Screen' or 'Install App'.</p>
+    <p className="mb-2">Check your browser&apos;s menu for an option to &apos;Add to Home Screen&apos; or &apos;Install App&apos;.</p>
   );
 
   return (

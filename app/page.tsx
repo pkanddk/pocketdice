@@ -9,7 +9,6 @@ import { Dice3, Users, Computer } from 'lucide-react'
 import { Card, CardContent } from "../components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 import { GameModeSelector } from '@/components/GameModeSelector'
-import Link from 'next/link'
 import SaveToHomeScreenModal from '@/components/ui/SaveToHomeScreenModal'
 
 const BACKGAMMON_MODE_KEY = "backgammon";
@@ -21,6 +20,8 @@ const GAME_MODE_DISPLAY_NAMES: { [key: string]: string } = {
   'single': "Yahtzee - Player vs A.I.",
   'score-card': "Yahtzee - Score Card",
   'duel': "Yahtzee - Player vs Player",
+  'farkle-pvp': "Farkle - Player vs Player",
+  'farkle-scorecard': "Farkle - Score Card",
   [BACKGAMMON_MODE_KEY]: "Backgammon",
 };
 
@@ -45,7 +46,7 @@ export default function HomePage() {
     if (gameMode !== BACKGAMMON_MODE_KEY) {
       if (gameMode === 'single') {
         requiredLength = 1;
-      } else if (gameMode === 'score-card' || gameMode === 'duel') {
+      } else if (gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'farkle-pvp' || gameMode === 'farkle-scorecard') {
         requiredLength = playerCount;
       }
       // Reset opponent type if switching away from Backgammon
@@ -96,7 +97,7 @@ export default function HomePage() {
   let numInputsToShow = 0;
   if (gameMode === 'single') {
     numInputsToShow = 1;
-  } else if (gameMode === 'score-card' || gameMode === 'duel') {
+  } else if (gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'farkle-pvp' || gameMode === 'farkle-scorecard') {
     numInputsToShow = playerCount;
   } else if (gameMode === BACKGAMMON_MODE_KEY) {
     numInputsToShow = backgammonOpponentType === OPPONENT_COMPUTER ? 1 : 2;
@@ -111,14 +112,27 @@ export default function HomePage() {
       return; 
     }
 
+    const namesForRoute = playerNames.slice(0, numInputsToShow); // Use numInputsToShow for general case
+
     if (gameMode === 'single') {
-      router.push(`/game/single-player?name=${encodeURIComponent(playerNames[0] || '')}`);
+      router.push(`/game/single-player?name=${encodeURIComponent(namesForRoute[0] || '')}`);
     } else if (gameMode === 'score-card' || gameMode === 'duel') {
       const route = gameMode === 'score-card' ? '/score-card' : `/game/${playerCount}`;
-      router.push(`${route}?names=${encodeURIComponent(JSON.stringify(playerNames.slice(0, playerCount)))}`);
+      router.push(`${route}?names=${encodeURIComponent(JSON.stringify(namesForRoute))}`);
+    } else if (gameMode === 'farkle-scorecard') {
+      const route = '/farkle-scorecard';
+      const queryString = encodeURIComponent(JSON.stringify(namesForRoute));
+      console.log("[Farkle Scorecard Navigation] Mode:", gameMode, "Route:", route, "PlayerCount:", playerCount, "Names being passed:", namesForRoute, "QueryString:", queryString);
+      router.push(`${route}?names=${queryString}`);
+    } else if (gameMode === 'farkle-pvp') {
+      const route = '/farkle-pvp';
+      // For farkle-pvp, playerCount is the correct length specifier used in its useEffect
+      const pvpNamesToPass = playerNames.slice(0, playerCount); 
+      const queryString = encodeURIComponent(JSON.stringify(pvpNamesToPass));
+      console.log("[Farkle PvP Navigation] Mode:", gameMode, "Route:", route, "PlayerCount:", playerCount, "Names being passed:", pvpNamesToPass, "QueryString:", queryString);
+      router.push(`${route}?players=${queryString}`);
     } else if (gameMode === BACKGAMMON_MODE_KEY) {
-      // Use the helper function to generate the correct link with names
-      const backgammonLink = getBackgammonLink(playerNames.slice(0, numInputsToShow));
+      const backgammonLink = getBackgammonLink(namesForRoute);
       router.push(backgammonLink);
     }
   }, [gameMode, playerCount, playerNames, router, backgammonOpponentType, isStartDisabled, numInputsToShow]);
@@ -198,7 +212,7 @@ export default function HomePage() {
                   currentSelectionName={selectedGameModeName}
               />
 
-              {(gameMode === 'score-card' || gameMode === 'duel') && (
+              {(gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'farkle-pvp' || gameMode === 'farkle-scorecard') && (
                 <div className="relative mt-4">
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                     <Users className="h-5 w-5 text-blue-500" />

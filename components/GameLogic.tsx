@@ -5,9 +5,6 @@ import { Input } from '@/components/ui/input'
 import { DiceIcon } from './DiceIcon'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { Logo } from './Logo'
-import { JerryLogo } from './JerryLogo'
-import { MernLogo } from './MernLogo'
 import { ComputerPlayerAI } from './ComputerPlayerAI'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GameRules } from './GameRules'
@@ -31,11 +28,6 @@ interface GameLogicProps {
   onResetGame: () => void;
 }
 
-interface ScoreCategory {
-  name: string
-  score: number | null
-}
-
 const upperCategories = [
   { name: 'ONES', value: 1 },
   { name: 'TWOS', value: 2 },
@@ -43,7 +35,7 @@ const upperCategories = [
   { name: 'FOURS', value: 4 },
   { name: 'FIVES', value: 5 },
   { name: 'SIXES', value: 6 }
-]
+] as const;
 
 const getLowerCategories = (isJerryGame: boolean, isMernGame: boolean) => [
   'Three of a Kind',
@@ -65,15 +57,19 @@ const lowerCategoryScores = {
   'Yahtzee': 50
 }
 
+// Define a type for the keys that HAVE fixed scores
+type LowerCategoryWithFixedScore = keyof typeof lowerCategoryScores;
+
+// Helper function for type guarding
+function isFixedLowerCategory(category: string): category is LowerCategoryWithFixedScore {
+    return category in lowerCategoryScores;
+}
+
 const BONUS_THRESHOLD = 63
 const BONUS_AMOUNT = 35
 
 
 export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMernGame, scores, setScores, isSinglePlayer = false, onResetGame }) => {
-  if (!Array.isArray(scores)) {
-    console.error('Scores is not an array:', scores)
-    return null
-  }
   const lowerCategories = useMemo(() => getLowerCategories(isJerryGame, isMernGame), [isJerryGame, isMernGame])
   const [currentPlayer, setCurrentPlayer] = useState(0)
   const [rollCount, setRollCount] = useState(0)
@@ -97,21 +93,11 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
     })
   }, [players])
 
-  const handleRoll = useCallback((newDiceValues: number[]) => {
-    setDiceValues(newDiceValues)
-    setRollCount(prevCount => prevCount + 1)
-    setPossibleScores(calculatePossibleScores(newDiceValues))
-  }, [])
-
-  const handleHold = useCallback((index: number) => {
-    setHeldDice(prev => {
-      const newHeldDice = [...prev]
-      newHeldDice[index] = !newHeldDice[index]
-      return newHeldDice
-    })
-  }, [])
-
   const calculatePossibleScores = useCallback((dice: number[]): (number | null)[] => {
+    if (!dice || dice.length === 0) {
+      return Array(upperCategories.length + lowerCategories.length).fill(null);
+    }
+
     const newPossibleScores = Array(upperCategories.length + lowerCategories.length).fill(null)
 
     // Calculate upper section scores
@@ -132,20 +118,42 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
     newPossibleScores[8] = Object.values(counts).includes(3) && Object.values(counts).includes(2) ? 25 : 0 // Full House / Boat
 
     // Small Straight / Smalls
-    const uniqueSorted = [...new Set(dice)].sort((a, b) => a - b)
+    const uniqueSorted = Array.from(new Set(dice)).sort((a, b) => a - b);
     newPossibleScores[9] = uniqueSorted.some((_, i) =>
       i <= uniqueSorted.length - 4 &&
-      uniqueSorted.slice(i, i + 4).every((n, j) => j === 0 || n === uniqueSorted[i + j - 1] + 1)
+      uniqueSorted.slice(i, i + 4).every((n, j) => {
+        const prevValue = uniqueSorted[i + j - 1];
+        return j === 0 || (prevValue !== undefined && n === prevValue + 1);
+      })
     ) ? 30 : 0
 
     // Large Straight / Biggie
-    newPossibleScores[10] = uniqueSorted.length === 5 && uniqueSorted[4] - uniqueSorted[0] === 4 ? 40 : 0
+    newPossibleScores[10] = (
+      uniqueSorted.length === 5 &&
+      uniqueSorted[0] !== undefined &&
+      uniqueSorted[4] !== undefined &&
+      uniqueSorted[4] - uniqueSorted[0] === 4
+    ) ? 40 : 0;
 
     newPossibleScores[11] = Object.values(counts).some(count => count === 5) ? 50 : 0 // Yahtzee
     newPossibleScores[12] = diceSum // Chance
 
     return newPossibleScores
   }, [lowerCategories.length])
+
+  const handleRoll = useCallback((newDiceValues: number[]) => {
+    setDiceValues(newDiceValues)
+    setRollCount(prevCount => prevCount + 1)
+    setPossibleScores(calculatePossibleScores(newDiceValues))
+  }, [calculatePossibleScores])
+
+  const handleHold = useCallback((index: number) => {
+    setHeldDice(prev => {
+      const newHeldDice = [...prev]
+      newHeldDice[index] = !newHeldDice[index]
+      return newHeldDice
+    })
+  }, [])
 
   const nextTurn = useCallback(() => {
     setCurrentPlayer((prevPlayer) => (prevPlayer + 1) % players.length)
@@ -157,26 +165,43 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
   }, [players.length])
 
   const selectScore = useCallback((categoryIndex: number) => {
-    if (rollCount > 0 && possibleScores[categoryIndex] !== null && scores[currentPlayer] && !scores[currentPlayer][categoryIndex].locked) {
+    const currentPlayerScores = scores[currentPlayer];
+    const scoreToTake = (categoryIndex >= 0 && categoryIndex < possibleScores.length) ? possibleScores[categoryIndex] : undefined;
+
+    if (
+      rollCount > 0 &&
+      scoreToTake !== null && scoreToTake !== undefined &&
+      currentPlayerScores && 
+      categoryIndex >= 0 && categoryIndex < currentPlayerScores.length && 
+      currentPlayerScores[categoryIndex] && 
+      !currentPlayerScores[categoryIndex].locked
+    ) {
       setScores(prevScores => {
-        const newScores = [...prevScores]
-        if (newScores[currentPlayer]) {
-          newScores[currentPlayer] = [...newScores[currentPlayer]]
-          newScores[currentPlayer][categoryIndex] = { value: possibleScores[categoryIndex], locked: true }
+        const newScores = [...prevScores];
+        const targetPlayerScores = newScores[currentPlayer];
+        if (targetPlayerScores && categoryIndex >= 0 && categoryIndex < targetPlayerScores.length) {
+          const updatedPlayerScores = [...targetPlayerScores];
+          updatedPlayerScores[categoryIndex] = { value: scoreToTake as number, locked: true }; 
+          newScores[currentPlayer] = updatedPlayerScores;
         }
-        return newScores
-      })
-      setScoreSelected(true)
-      setRollCount(0)
-      setDiceValues([1, 1, 1, 1, 1])
-      setHeldDice([false, false, false, false, false])
+        return newScores;
+      });
+      setScoreSelected(true);
+      setRollCount(0);
+      setDiceValues([1, 1, 1, 1, 1]);
+      setHeldDice([false, false, false, false, false]);
       setPossibleScores([])
       nextTurn()
     }
   }, [rollCount, possibleScores, scores, currentPlayer, setScores, nextTurn])
 
   const calculateUpperTotal = useCallback((playerIndex: number) => {
-    return upperCategories.reduce((sum, _, index) => sum + (scores[playerIndex]?.[index]?.value || 0), 0)
+    const playerScores = scores[playerIndex];
+    if (!playerScores) return 0; // Guard against undefined player scores array
+    return upperCategories.reduce((sum, _, index) => {
+      const scoreEntry = playerScores[index];
+      return sum + (scoreEntry?.value || 0); // Use optional chaining for scoreEntry
+    }, 0);
   }, [scores])
 
   const calculateBonus = useCallback((upperTotal: number) => {
@@ -184,7 +209,12 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
   }, [])
 
   const calculateLowerTotal = useCallback((playerIndex: number) => {
-    return lowerCategories.reduce((sum, _, index) => sum + (scores[playerIndex]?.[upperCategories.length + index]?.value || 0), 0)
+    const playerScores = scores[playerIndex];
+    if (!playerScores) return 0; // Guard against undefined player scores array
+    return lowerCategories.reduce((sum, _, index) => {
+      const scoreEntry = playerScores[upperCategories.length + index];
+      return sum + (scoreEntry?.value || 0); // Use optional chaining for scoreEntry
+    }, 0);
   }, [scores, lowerCategories])
 
   const playerTotals = useMemo(() => players.map((_, playerIndex) => {
@@ -223,7 +253,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
     if (typeof onResetGame === 'function') {
       onResetGame();
     }
-  }, [players.length, upperCategories.length, lowerCategories.length, setScores, onResetGame]);
+  }, [players.length, lowerCategories.length, setScores, onResetGame]);
 
   const isGameComplete = useCallback(() => {
     return Array.isArray(scores) && scores.length > 0 && scores.every(playerScores =>
@@ -262,28 +292,55 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
 
     const endTurn = () => {
       const possibleScores = calculatePossibleScores(currentDiceValues)
-      const availableCategories = scores[currentPlayer].map((score, index) =>
+      const currentPlayerScores = scores[currentPlayer]
+
+      if (!currentPlayerScores) {
+        console.error(`Computer turn error: No scores array found for player index ${currentPlayer}`)
+        setIsComputerTurn(false)
+        return
+      }
+
+      const availableCategories = currentPlayerScores.map((score, index) =>
         score.locked ? null : index
       ).filter((index): index is number => index !== null)
 
-      const categoryNames = [
+      const categoryNames: string[] = [
         ...upperCategories.map(cat => cat.name),
         ...lowerCategories
       ]
 
+      const availableCategoryNames = availableCategories
+        .map(index => categoryNames[index])
+        .filter((name): name is string => name !== undefined)
+
       const selectedCategory = computerAI.decideCategory(
-        availableCategories.map(index => categoryNames[index]),
+        availableCategoryNames,
         availableCategories.map(index => possibleScores[index] || 0)
       )
       const selectedCategoryIndex = categoryNames.indexOf(selectedCategory)
 
+      if (selectedCategoryIndex < 0) {
+        console.error(`Computer turn error: Category '${selectedCategory}' not found in categoryNames.`)
+        setIsComputerTurn(false)
+        return
+      }
+
       setScores(prevScores => {
         const newScores = [...prevScores]
-        newScores[currentPlayer] = [...newScores[currentPlayer]]
-        newScores[currentPlayer][selectedCategoryIndex] = {
-          value: possibleScores[selectedCategoryIndex],
+        const targetPlayerScores = newScores[currentPlayer]
+
+        if (!targetPlayerScores) {
+          console.error(`Computer turn error: targetPlayerScores is undefined for player index ${currentPlayer} inside setScores.`)
+          return prevScores
+        }
+
+        const updatedPlayerScores = [...targetPlayerScores]
+        
+        updatedPlayerScores[selectedCategoryIndex] = {
+          value: possibleScores[selectedCategoryIndex] ?? 0,
           locked: true
         }
+        newScores[currentPlayer] = updatedPlayerScores
         return newScores
       })
 
@@ -292,7 +349,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
     }
 
     rollDice()
-  }, [computerAI, currentPlayer, diceValues, heldDice, calculatePossibleScores, nextTurn, scores, setScores])
+  }, [computerAI, currentPlayer, diceValues, heldDice, calculatePossibleScores, nextTurn, scores, setScores, lowerCategories])
 
   useEffect(() => {
     if (isSinglePlayer && currentPlayer === 1 && !isComputerTurn) {
@@ -304,7 +361,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
     if (scoreSelected) {
       setScoreSelected(false)
     }
-  }, [currentPlayer])
+  }, [currentPlayer, scoreSelected])
 
   const renderNewGameButtons = () => (
     <div className="mt-6 sm:mt-10 text-center space-y-4 sm:space-y-0 sm:space-x-4">
@@ -334,6 +391,11 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
       </Button>
     </div>
   )
+
+  if (!Array.isArray(scores)) {
+    console.error('Scores is not an array:', scores)
+    return null
+  }
 
   return (
     <div className={`container mx-auto px-2 sm:px-4 py-2 sm:py-4 min-h-screen relative z-0 ${
@@ -498,7 +560,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                 <td className={`p-2 sm:p-4 font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Upper Section Total</td>
                 {players.map((_, playerIndex) => (
                   <td key={playerIndex} className={`p-2 sm:p-4 text-center font-bold text-lg ${playerIndex === currentPlayer ? isJerryGame ? 'bg-gray-700' : 'bg-red-50' : ''}`}>
-                    {playerTotals[playerIndex].upperTotal}
+                    {playerTotals?.[playerIndex]?.upperTotal}
                   </td>
                 ))}
               </tr>
@@ -514,14 +576,14 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                 <td className={`p-2 sm:p-4 font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Bonus (63+ = 35)</td>
                 {players.map((_, playerIndex) => (
                   <td key={playerIndex} className={`p-2 sm:p-4 text-center ${playerIndex === currentPlayer ? isJerryGame ? 'bg-gray-700' : 'bg-red-50' : ''} ${isJerryGame ? 'text-white' : ''}`}>
-                    <span className="font-bold text-lg">{playerTotals[playerIndex].bonus}</span>
-                    {playerTotals[playerIndex].bonus === 0 ? (
+                    <span className="font-bold text-lg">{playerTotals?.[playerIndex]?.bonus}</span>
+                    {playerTotals?.[playerIndex]?.bonus === 0 ? (
                       <span className={`text-${isJerryGame ? 'gray-300' : isMernGame ? 'pink-700' : 'red-500'} ml-1 sm:ml-2 text-base block sm:inline`}>
-                        ({playerTotals[playerIndex].pointsToBonus} to go)
+                        ({playerTotals?.[playerIndex]?.pointsToBonus} to go)
                       </span>
                     ) : (
                       <span className={`text-${isJerryGame ? 'gray-300' : isMernGame ? 'pink-600' : 'green-500'} ml-1 sm:ml-2 text-base block sm:inline`}>
-                        (+{playerTotals[playerIndex].pointsOverBonus})
+                        (+{playerTotals?.[playerIndex]?.pointsOverBonus})
                       </span>
                     )}
                   </td>
@@ -539,7 +601,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                 <td className={`p-2 sm:p-4 font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Upper Section Total (with bonus)</td>
                 {players.map((_, playerIndex) => (
                   <td key={playerIndex} className={`p-2 sm:p-4 text-center font-bold text-lg ${playerIndex === currentPlayer ? isJerryGame ? 'bg-gray-700' : 'bg-red-50' : ''}`}>
-                    {playerTotals[playerIndex].upperTotalWithBonus}
+                    {playerTotals?.[playerIndex]?.upperTotalWithBonus}
                   </td>
                 ))}
               </tr>
@@ -551,7 +613,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                 } transition-colors duration-150`}>
                   <td className={`p-2 sm:p-4 text-lg font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-800 text-white' : isMernGame ? 'bg-white text-gray-800' : 'bg-white text-gray-700'}`}>
                     {category}
-                    {lowerCategoryScores[category] && (
+                    {isFixedLowerCategory(category) && lowerCategoryScores[category] && (
                       <span className={`ml-2 text-base ${isJerryGame ? 'text-gray-300' : isMernGame ? 'text-pink-700' : 'text-gray-400'}`}>
                         ({lowerCategoryScores[category]} points)
                       </span>
@@ -578,20 +640,13 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                             type="text"
                             inputMode="numeric"
                             pattern="\d*"
-                            value={scores[playerIndex]?.[upperCategories.length + categoryIndex]?.value ?? ''}
+                            value={scores?.[playerIndex]?.[upperCategories.length + categoryIndex]?.value ?? ''}
                             readOnly
                             className={`w-full text-center text-lg ${
-                              scores[playerIndex]?.[upperCategories.length + categoryIndex] !== null
-                                ? isJerryGame
-                                  ? 'bg-blue-900 border-blue-700 text-white'
-                                  : isMernGame
-                                    ? 'bg-white border-pink-200 text-gray-800'
-                                    : 'bg-blue-100 border-blue-300 text-blue-900'
-                                : isJerryGame
-                                  ? 'bg-gray-700 border-gray-600 text-white'
-                                  : isMernGame
-                                    ? 'bg-white border-pink-200 text-gray-800'
-                                    : 'bg-gray-50 border-gray-300'
+                              (scores?.[playerIndex]?.[upperCategories.length + categoryIndex]?.value !== null && 
+                               scores?.[playerIndex]?.[upperCategories.length + categoryIndex]?.value !== undefined)
+                                ? isJerryGame ? 'bg-blue-900 border-blue-700 text-white' : isMernGame ? 'bg-white border-pink-200 text-gray-800' : 'bg-blue-100 border-blue-300 text-blue-900'
+                                : isJerryGame ? 'bg-gray-700 border-gray-600 text-white' : isMernGame ? 'bg-white border-pink-200 text-gray-800' : 'bg-gray-50 border-gray-300'
                             } rounded-md`}
                           />
                         )}
@@ -612,7 +667,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                 <td className={`p-2 sm:p-4 font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Lower Section Total</td>
                 {players.map((_, playerIndex) => (
                   <td key={playerIndex} className={`p-2 sm:p-4 text-center font-bold text-lg ${playerIndex === currentPlayer ? isJerryGame ? 'bg-gray-700' : 'bg-red-50' : ''}`}>
-                    {playerTotals[playerIndex].lowerTotal}
+                    {playerTotals?.[playerIndex]?.lowerTotal}
                   </td>
                 ))}
               </tr>
@@ -652,7 +707,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                 <td className={`p-2 sm:p-4 font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Grand Total</td>
                 {players.map((_, playerIndex) => (
                   <td key={playerIndex} className={`p-2 sm:p-4 text-center font-bold text-lg ${playerIndex === currentPlayer ? isJerryGame ? 'bg-gray-700' : 'bg-red-50' : ''}`}>
-                    {finalTally ? playerTotals[playerIndex].grandTotal : '?'}
+                    {finalTally ? playerTotals?.[playerIndex]?.grandTotal : '?'}
                   </td>
                 ))}
               </tr>
@@ -680,8 +735,9 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
               isJerryGame ? 'text-blue-400' : 'text-blue-600'
             }`}>
               <p className="text-lg font-semibold">
-                {getDisplayNames[playerTotals.reduce((maxIndex, current, index, array) =>
-                  current.grandTotal > array[maxIndex].grandTotal ? index : maxIndex, 0)]} wins with {Math.max(...playerTotals.map(p => p.grandTotal))} points!
+                {getDisplayNames[playerTotals?.reduce((maxIndex, current, index, array) =>
+                  current.grandTotal > (array?.[maxIndex]?.grandTotal ?? -Infinity) ? index : maxIndex
+                , 0) ?? 0]} wins with {Math.max(...playerTotals?.map(p => p.grandTotal) ?? [0])} points!
               </p>
             </div>
             <div className="space-y-2 mb-6">
@@ -689,18 +745,16 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                 <div
                   key={index}
                   className={`flex justify-between items-center p-2 rounded ${
-                    playerTotals[index].grandTotal === Math.max(...playerTotals.map(p => p.grandTotal))
-                      ? isJerryGame
-                        ? 'bg-blue-900/50'
-                        : 'bg-blue-100'
+                    (playerTotals?.[index]?.grandTotal ?? -1) === Math.max(...playerTotals?.map(p => p.grandTotal) ?? [0])
+                      ? isJerryGame ? 'bg-blue-900/50' : 'bg-blue-100'
                       : ''
                   }`}
                 >
                   <span className="text-lg">
-                    {playerTotals[index].grandTotal === Math.max(...playerTotals.map(p => p.grandTotal)) && '🏆 '}
+                    {(playerTotals?.[index]?.grandTotal ?? -1) === Math.max(...playerTotals?.map(p => p.grandTotal) ?? [0]) && '🏆 '}
                     {player}
                   </span>
-                  <span className="font-mono font-bold text-lg">{playerTotals[index].grandTotal}</span>
+                  <span className="font-mono font-bold text-lg">{playerTotals?.[index]?.grandTotal}</span>
                 </div>
               ))}
             </div>
@@ -736,7 +790,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                     'bg-white text-gray-900'
               }`}
             >
-              <h2 className="text-2xl font-bold mb-4 text-center">Computer's Turn</h2>
+              <h2 className="text-2xl font-bold mb-4 text-center">Computer&apos;s Turn</h2>
               <div className="flex justify-center items-center space-x-4">
                 {[1, 2, 3].map((die) => (
                   <motion.div

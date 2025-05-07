@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { DiceIcon } from './DiceIcon'
 import { Button } from '@/components/ui/button'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { MobileDiceRoller } from './MobileDiceRoller'
@@ -117,7 +116,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                   <Dice
                     key={index}
                     value={value}
-                    isHeld={heldDice[index]}
+                    isHeld={heldDice[index] ?? false}
                     isRolling={isRolling}
                     onClick={() => toggleHold(index)}
                     isJerryGame={isJerryGame}

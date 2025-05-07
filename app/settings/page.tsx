@@ -2,14 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft } from 'lucide-react'
 
 export default function SettingsPage() {
-  const router = useRouter()
   const [darkMode, setDarkMode] = useState(false)
   const [soundEffects, setSoundEffects] = useState(true)
 

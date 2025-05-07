@@ -8,7 +8,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { X } from 'lucide-react'
 
 interface MobileDiceRollerProps {
   isJerryGame: boolean
@@ -35,7 +34,8 @@ const getDotPosition = (value: number, index: number): { top: string, left: stri
     5: [{ top: '30%', left: '30%' }, { top: '30%', left: '70%' }, { top: '50%', left: '50%' }, { top: '70%', left: '30%' }, { top: '70%', left: '70%' }],
     6: [{ top: '30%', left: '30%' }, { top: '30%', left: '70%' }, { top: '50%', left: '30%' }, { top: '50%', left: '70%' }, { top: '70%', left: '30%' }, { top: '70%', left: '70%' }],
   };
-  return positions[value as keyof typeof positions][index];
+  const positionArray = positions[value as keyof typeof positions];
+  return positionArray?.[index] ?? { top: '0%', left: '0%' };
 };
 
 export const MobileDiceRoller: React.FC<MobileDiceRollerProps> = ({ 
@@ -51,11 +51,9 @@ export const MobileDiceRoller: React.FC<MobileDiceRollerProps> = ({
 }) => {
   const [isRolling, setIsRolling] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
-  const [allDiceHeld, setAllDiceHeld] = useState(false);
 
   useEffect(() => {
     if (scoreSelected) {
-      setAllDiceHeld(false);
       setIsOpen(false);
     }
   }, [scoreSelected]);
@@ -78,7 +76,6 @@ export const MobileDiceRoller: React.FC<MobileDiceRollerProps> = ({
       const newHeldDice = [...heldDice];
       newHeldDice[index] = !newHeldDice[index];
       onHold(index);
-      setAllDiceHeld(newHeldDice.every(held => held));
     }
   };
 
@@ -86,10 +83,6 @@ export const MobileDiceRoller: React.FC<MobileDiceRollerProps> = ({
     if (isJerryGame) return 'bg-blue-600 hover:bg-blue-700'
     if (isMernGame) return 'bg-pink-500 hover:bg-pink-600'
     return 'bg-blue-500 hover:bg-blue-600'
-  }
-
-  const getDiceColor = (isHeld: boolean) => {
-    return isHeld ? 'bg-blue-600' : 'bg-blue-400';
   }
 
   const handleTakeScore = () => {

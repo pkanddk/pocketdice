@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 
 export default function SinglePlayerGamePage() {
   const router = useRouter()
-  const [playerName, setPlayerName] = useState('Player 1')
+  const [playerName] = useState('Player 1')
   const [isJerryGame, setIsJerryGame] = useState(false)
   const [isMernGame, setIsMernGame] = useState(false)
   const [scores, setScores] = useState<Array<Array<{ value: number | null; locked: boolean }>>>([])
@@ -96,9 +96,9 @@ export default function SinglePlayerGamePage() {
           setScores={setScores}
           isSinglePlayer={true}
           onResetGame={resetGame}
-          renderNewGameButtons={renderNewGameButtons}
         />
       )}
+      {renderNewGameButtons()}
     </div>
   )
 }

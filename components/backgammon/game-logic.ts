@@ -40,9 +40,8 @@ export class BackgammonRules {
         }
 
         let currentPos = from;
-        let tempBoard = this.cloneBoard(board); // Fresh temp board for each 'from' and 'numDiceInChain'
+        const tempBoard = this.cloneBoard(board); // Fresh temp board for each 'from' and 'numDiceInChain'
         let possibleChain = true;
-        let finalDestinationPathIndex = -1; // Initialize to an invalid state
         let actualToPointForMove = -1;
 
         // Simulate the chain of moves for numDiceInChain
@@ -76,7 +75,7 @@ export class BackgammonRules {
             if (tempCurrentPoint) tempCurrentPoint.count--; // Decrement count at current segment start
             
             const opponentPlayer = currentPlayer === BLACK ? WHITE : BLACK;
-            let tempNextPoint = tempBoard[nextToPoint] as PointState;
+            const tempNextPoint = tempBoard[nextToPoint] as PointState;
             if (!tempNextPoint) { // Should be initialized by cloneBoard, but defensive
                 tempBoard[nextToPoint] = { player: currentPlayer, count: 1 };
             } else if (tempNextPoint.player === opponentPlayer && tempNextPoint.count === 1) { // Hit

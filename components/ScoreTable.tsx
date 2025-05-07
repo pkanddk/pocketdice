@@ -1,7 +1,5 @@
 import React from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { DiceIcon } from './DiceIcon'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { GameRules } from './GameRules'
@@ -141,7 +139,7 @@ export const ScoreTable: React.FC<ScoreTableProps> = ({
             <td className={`p-2 sm:p-4 font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Grand Total</td>
             {players.map((_, playerIndex) => (
               <td key={playerIndex} className={`p-2 sm:p-4 text-center font-bold text-lg ${playerIndex === currentPlayer ? 'bg-red-50' : ''}`}>
-                {finalTally ? playerTotals[playerIndex].grandTotal : '?'}
+                {finalTally ? playerTotals[playerIndex]?.grandTotal ?? '?' : '?'}
               </td>
             ))}
           </tr>

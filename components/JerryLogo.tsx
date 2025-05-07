@@ -13,7 +13,7 @@ export function JerryLogo() {
           className="bg-white rounded-sm"
         />
       </div>
-      <h1 className="text-4xl font-bold text-white tracking-tight">Jerry's Game</h1>
+      <h1 className="text-4xl font-bold text-white tracking-tight">Jerry&apos;s Game</h1>
       <p className="text-xl text-blue-300 mt-2">Roll the dice, Jerry style!</p>
       <p className="text-xl text-white mt-2">Game On!</p>
     </div>

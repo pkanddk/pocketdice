@@ -3,7 +3,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
-import { GameRules } from './GameRules'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ScoreTable } from './ScoreTable'
 import { Input } from "@/components/ui/input"
@@ -38,16 +37,6 @@ const getLowerCategories = (isJerryGame: boolean, isMernGame: boolean) => [
   'Chance'
 ]
 
-const lowerCategoryScores = {
-  'Full House': 25,
-  'Boat': 25,
-  'Small Straight': 30,
-  'Smalls': 30,
-  'Large Straight': 40,
-  'Biggie': 40,
-  'Yahtzee': 50
-}
-
 const BONUS_THRESHOLD = 63
 const BONUS_AMOUNT = 35
 
@@ -57,9 +46,6 @@ export const ScoreCardLogic: React.FC<ScoreCardLogicProps> = ({ players, isJerry
   const [showRules, setShowRules] = useState(false)
   const [finalTally, setFinalTally] = useState(false)
   const [showFinalTally, setShowFinalTally] = useState(false)
-  const [confirmedScores, setConfirmedScores] = useState<boolean[][]>(
-    Array(players.length).fill(null).map(() => Array(upperCategories.length + lowerCategories.length).fill(false))
-  );
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [selectedScore, setSelectedScore] = useState<{ playerIndex: number; categoryIndex: number; currentValue: number | null } | null>(null)
   const router = useRouter()

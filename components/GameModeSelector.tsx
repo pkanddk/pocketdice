@@ -1,8 +1,9 @@
 'use client';
 
+import React from 'react';
 import { useState } from 'react';
-import { Dice5, ChevronDown, ChevronRight } from "lucide-react";
-import { Button } from "./ui/button";
+import { Dice5, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface GameModeSelectorProps {
   onSelectGameMode: (mode: string) => void;
@@ -12,14 +13,26 @@ interface GameModeSelectorProps {
 export function GameModeSelector({ onSelectGameMode, currentSelectionName }: GameModeSelectorProps) {
   const [open, setOpen] = useState(false);
   const [yahtzeeOpen, setYahtzeeOpen] = useState(false);
+  const [farkleOpen, setFarkleOpen] = useState(false);
   const [backgammonOpen, setBackgammonOpen] = useState(false);
 
   // Function to handle game selection
   const handleGameSelect = (gameMode: string) => {
     setOpen(false);
     setYahtzeeOpen(false);
+    setFarkleOpen(false);
     setBackgammonOpen(false);
     onSelectGameMode(gameMode);
+  };
+
+  // Toggle Farkle category
+  const toggleFarkle = () => {
+    const currentlyFarkleOpen = farkleOpen;
+    setFarkleOpen(!currentlyFarkleOpen);
+    if (!currentlyFarkleOpen) {
+      setYahtzeeOpen(false);
+      setBackgammonOpen(false);
+    }
   };
 
   return (
@@ -45,7 +58,14 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
           <div className="w-full">
             <button 
               className="w-full py-4 px-5 hover:bg-blue-50 focus:bg-blue-50 flex justify-between items-center"
-              onClick={() => setYahtzeeOpen(!yahtzeeOpen)}
+              onClick={() => {
+                const currentlyYahtzeeOpen = yahtzeeOpen;
+                setYahtzeeOpen(!currentlyYahtzeeOpen);
+                if (!currentlyYahtzeeOpen) {
+                  setFarkleOpen(false);
+                  setBackgammonOpen(false);
+                }
+              }}
             >
               <div className="flex flex-col items-start text-left">
                 <span className="font-semibold text-blue-700 text-lg">Yahtzee</span>
@@ -63,7 +83,7 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
                 >
                   <div className="flex flex-col">
                     <span className="font-semibold text-blue-700 text-lg">Player vs Machine</span>
-                    <span className="text-sm text-gray-500">No friends? Sad. We got you!</span>
+                    <span className="text-sm text-gray-500">No friends? :(  We got you!</span>
                   </div>
                 </button>
                 
@@ -75,7 +95,7 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
                 >
                   <div className="flex flex-col">
                     <span className="font-semibold text-blue-700 text-lg">Score Card</span>
-                    <span className="text-sm text-gray-500">A digital score card, always in your pocket.</span>
+                    <span className="text-sm text-gray-500">Digital score card, always in your pocket.</span>
                   </div>
                 </button>
                 
@@ -87,7 +107,7 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
                 >
                   <div className="flex flex-col">
                     <span className="font-semibold text-blue-700 text-lg">Player vs Player</span>
-                    <span className="text-sm text-gray-500">Full game, dice included.</span>
+                    <span className="text-sm text-gray-500">Full game.</span>
                   </div>
                 </button>
               </div>
@@ -96,11 +116,76 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
           
           <div className="border-t border-blue-100"></div>
           
+          {/* Farkle Category - NEW */}
+          <div className="w-full">
+            <button
+              className="w-full py-4 px-5 hover:bg-blue-50 focus:bg-blue-50 flex justify-between items-center"
+              onClick={toggleFarkle}
+            >
+              <div className="flex flex-col items-start text-left">
+                <span className="font-semibold text-blue-700 text-lg">F#*kle</span>
+                <span className="text-sm text-gray-500">Roll and risk dice game</span>
+              </div>
+              <ChevronDown className={`h-5 w-5 text-blue-500 transition-transform ${farkleOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Farkle Submenu (Vertical) */}
+            {farkleOpen && (
+              <div className="bg-blue-50/70 border-t border-b border-blue-100">
+                <button
+                  className="w-full py-4 px-8 hover:bg-blue-100 focus:bg-blue-100 text-left"
+                  onClick={() => handleGameSelect('farkle-pvp')}
+                >
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-blue-700 text-lg">Player vs Player</span>
+                    <span className="text-sm text-gray-500">Full game.</span>
+                  </div>
+                </button>
+
+                <div className="border-t border-blue-100/50"></div>
+
+                {/* Farkle Score Card Button - Simplified */}
+                <button
+                  className="w-full py-4 px-8 hover:bg-blue-100 focus:bg-blue-100 text-left"
+                  onClick={() => handleGameSelect('farkle-scorecard')}
+                >
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-blue-700 text-lg">Score Card</span>
+                    <span className="text-sm text-gray-500">Digital score card, always in your pocket.</span>
+                  </div>
+                </button>
+
+                <div className="border-t border-blue-100/50"></div>
+
+                <button
+                  className="w-full py-4 px-8 bg-gray-50 text-left opacity-75 cursor-not-allowed"
+                >
+                  <div className="flex flex-col">
+                    <div className="flex items-center">
+                      <span className="font-semibold text-gray-600 text-lg">Player vs Computer</span>
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">Coming Soon</span>
+                    </div>
+                    <span className="text-sm text-gray-500">Challenge the AI.</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-blue-100"></div>
+          
           {/* Backgammon Category */}
           <div className="w-full">
             <button 
               className="w-full py-4 px-5 hover:bg-blue-50 focus:bg-blue-50 flex justify-between items-center"
-              onClick={() => setBackgammonOpen(!backgammonOpen)}
+              onClick={() => {
+                const currentlyBackgammonOpen = backgammonOpen;
+                setBackgammonOpen(!currentlyBackgammonOpen);
+                if (!currentlyBackgammonOpen) {
+                  setYahtzeeOpen(false);
+                  setFarkleOpen(false);
+                }
+              }}
             >
               <div className="flex flex-col items-start text-left">
                 <span className="font-semibold text-blue-700 text-lg">Backgammon</span>
