@@ -70,21 +70,24 @@ export default function HomePage() {
 
   // Effect to manage Save to Home Screen modal display
   useEffect(() => {
-    // Check if running as a PWA (standalone mode)
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setShowSaveModal(false); // Don't show if already a PWA
-      return;
-    }
+    // Ensure this code only runs on the client-side
+    if (typeof window !== 'undefined') {
+      // Check if running as a PWA (standalone mode)
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        setShowSaveModal(false); // Don't show if already a PWA
+        return;
+      }
 
-    const lastSeenTimestamp = localStorage.getItem('lastSeenSaveModalTimestamp');
-    const sevenDaysInMillis = 7 * 24 * 60 * 60 * 1000;
+      const lastSeenTimestamp = localStorage.getItem('lastSeenSaveModalTimestamp');
+      const sevenDaysInMillis = 7 * 24 * 60 * 60 * 1000;
 
-    if (!lastSeenTimestamp) {
-      setShowSaveModal(true); // First visit
-    } else {
-      const timeSinceLastSeen = Date.now() - parseInt(lastSeenTimestamp, 10);
-      if (timeSinceLastSeen > sevenDaysInMillis) {
-        setShowSaveModal(true); // More than 7 days have passed
+      if (!lastSeenTimestamp) {
+        setShowSaveModal(true); // First visit
+      } else {
+        const timeSinceLastSeen = Date.now() - parseInt(lastSeenTimestamp, 10);
+        if (timeSinceLastSeen > sevenDaysInMillis) {
+          setShowSaveModal(true); // More than 7 days have passed
+        }
       }
     }
   }, []);

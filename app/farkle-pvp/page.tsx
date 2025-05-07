@@ -217,25 +217,35 @@ function FarklePvPPageContent() {
     setTimeout(() => {
       setDiceValues(newDiceValues);
       // Keep held dice as held, others available (animation handled by isRolling prop)
-      setDiceStates(prevStates => prevStates.map(s => s === 'held' ? 'held' : 'available')); 
+      // Make newly rolled dice available, keep held dice as held.
+      setDiceStates(prevStates => prevStates.map((state, i) => {
+        // If the die was held, it remains held.
+        if (state === 'held') return 'held';
+        // If the die was available and its value changed, it's now part of the new roll.
+        // For simplicity, if it wasn't held, it's part of the roll, so 'available'.
+        // This could be refined if we only wanted to mark dice that actually changed value.
+        return 'available'; 
+      })); 
       setIsRolling(false);
       
       if (farkleDetected) {
-        // Record Farkle score (0) and advance turn
+        // Player Farkled. Record their score as 0.
         setPlayerStates(prev => 
           prev.map((ps, index) => {
             if (index === currentPlayerIndex) {
-              return { ...ps, scores: [...ps.scores, 0] }; 
-            } else {
-              return ps;
+              // Ensure ps.scores is an array before spreading
+              const currentScores = Array.isArray(ps.scores) ? ps.scores : [];
+              return { ...ps, scores: [...currentScores, 0] }; 
             }
+            return ps;
           })
         );
         console.log("Advancing turn due to Farkle...");
-        setTimeout(checkForGameEndOrAdvanceTurn, 1000); 
+        // Call checkForGameEndOrAdvanceTurn directly, removing the nested setTimeout.
+        checkForGameEndOrAdvanceTurn(); 
       }
       // If not Farkle, the game state waits for the player to select a die (mustSelectDie is true)
-    }, farkleDetected ? 1500 : 500);
+    }, farkleDetected ? 1500 : 500); // Delay for dice animation and Farkle visibility
   };
 
   const handleToggleHold = (index: number) => {

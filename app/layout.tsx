@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 // Remove the Navbar import
@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   title: "Pocket Score",
   description: "Your go-to scoring app",
   manifest: "/manifest.json",
-  themeColor: "#0F172A",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any", type: "image/x-icon" },
@@ -25,6 +24,11 @@ export const metadata: Metadata = {
     ],
     // other: [], // For any other specific icon needs
   },
+};
+
+// Add viewport export for themeColor
+export const viewport: Viewport = {
+  themeColor: "#0F172A",
 };
 
 export default function RootLayout({
