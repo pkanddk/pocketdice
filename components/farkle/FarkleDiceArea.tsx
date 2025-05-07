@@ -30,6 +30,7 @@ interface FarkleDiceAreaProps {
   MINIMUM_TO_GET_ON_BOARD: number;
   finalRoundTriggeredBy: number | null;
   playersCompletedFinalRound: boolean[];
+  canRollHotDice: boolean; // Add prop for hot dice
 }
 
 export const FarkleDiceArea: React.FC<FarkleDiceAreaProps> = ({
@@ -48,7 +49,8 @@ export const FarkleDiceArea: React.FC<FarkleDiceAreaProps> = ({
   currentPlayerIndex,
   MINIMUM_TO_GET_ON_BOARD,
   finalRoundTriggeredBy,
-  playersCompletedFinalRound
+  playersCompletedFinalRound,
+  canRollHotDice // Destructure prop
 }) => {
 
   // Ensure diceValues has length 6 for rendering, provide defaults if not
@@ -62,8 +64,8 @@ export const FarkleDiceArea: React.FC<FarkleDiceAreaProps> = ({
                       !(finalRoundTriggeredBy !== null && playersCompletedFinalRound[currentPlayerIndex]);
 
   // Determine if roll button should be disabled
-  const canRollDice = !isRolling && !isFarkle && !gameOver && !mustSelectDie && 
-                     !(finalRoundTriggeredBy !== null && playersCompletedFinalRound[currentPlayerIndex]);
+  const canRollNormally = !isRolling && !isFarkle && !gameOver && !mustSelectDie && 
+                         !(finalRoundTriggeredBy !== null && playersCompletedFinalRound[currentPlayerIndex]);
 
 
   return (
@@ -93,10 +95,10 @@ export const FarkleDiceArea: React.FC<FarkleDiceAreaProps> = ({
         <div className="flex space-x-3 mt-4 mb-2"> { /* Added margin */ }
           <Button 
             onClick={handleRollDice} 
-            disabled={!canRollDice} 
+            disabled={!(canRollNormally || canRollHotDice)} // Update disabled logic
             className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Roll Dice
+            {canRollHotDice ? 'Roll Hot Dice!' : 'Roll Dice'} {/* Update button text */}
           </Button>
           <Button 
             onClick={handleBankScore} 

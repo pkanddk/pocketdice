@@ -4,25 +4,28 @@ import React, { useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion'; // For modal
+// @ts-ignore - Suppress canvas-confetti type error for now
 import confetti from 'canvas-confetti'; // For winner celebration
 import { ChevronUp, ChevronDown, X as LucideX, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6 } from 'lucide-react';
 import { FarkleRulesDisplay } from './FarkleRulesDisplay'; // Import the new rules display component
 
 const hideSpinnerClass = "appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
-export interface FarkleScoreTableProps {
+interface FarkleScoreTableProps {
   players: string[];
   turnScores: Array<Array<number | null>>;
   playerTotals: number[];
   isPlayerOnBoard: boolean[]; // Added
   currentPlayerIndex: number;
-  currentGlobalTurn: number;
+  actualCurrentTurnIndex: number; // Added
   displayedTurnCount: number; // New prop for dynamic turn display
   currentTurnInput: string;
+  gameMessage: string | null; // Added
   gameOver: boolean; // Added
   onInputChange: (value: string) => void;
   onBankScore: () => void;
   minimumToGetOnBoard: number; // Added
+  winningScore: number; // Added
   showFinalTallyModal: boolean; // Added
   winningPlayerName: string | null; // Added
   onCloseFinalTallyModal: () => void; // Added
@@ -30,7 +33,7 @@ export interface FarkleScoreTableProps {
   onToggleRulesModal: () => void; // Added
   // showRules, setShowRules to be added later for a rules modal
 
-  // Props for live score display in active cell
+  // Add missing props for live score display
   liveTurnScore: number;
   isFarkleTurn: boolean;
 
@@ -55,21 +58,21 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
   playerTotals,
   isPlayerOnBoard,
   currentPlayerIndex,
-  currentGlobalTurn,
+  actualCurrentTurnIndex,
   displayedTurnCount,
   currentTurnInput,
+  gameMessage,
   gameOver,
   onInputChange,
   onBankScore,
   minimumToGetOnBoard,
+  winningScore,
   showFinalTallyModal,
   winningPlayerName,
   onCloseFinalTallyModal,
   showRulesModal,
   onToggleRulesModal,
-  // Destructure new props
-  liveTurnScore,
-  isFarkleTurn,
+  // Destructure new props for score editing
   onEditBankedScore,
   showConfirmModal,
   onConfirmScoreChange,
@@ -81,12 +84,20 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
   showFinalRoundInitiationNotice,
   finalRoundInitiationMessage,
   onDismissFinalRoundInitiationNotice,
+  // Add missing props for live score display
+  liveTurnScore,
+  isFarkleTurn,
 }) => {
+  // --- Add Log --- 
+  console.log("[FarkleScoreTable] Received props: turnScores:", JSON.stringify(turnScores), " liveTurnScore:", liveTurnScore, " isFarkleTurn:", isFarkleTurn);
+  // --------------- 
+
   const inputRef = useRef<HTMLInputElement>(null);
   const confirmInputRef = useRef<HTMLInputElement>(null); // Ref for modal input
 
   useEffect(() => {
     if (showFinalTallyModal && winningPlayerName) {
+      // @ts-ignore
       confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
     }
   }, [showFinalTallyModal, winningPlayerName]);
@@ -96,7 +107,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
     if (!gameOver && inputRef.current && !showConfirmModal && document.activeElement !== inputRef.current) {
       inputRef.current.focus({ preventScroll: true });
     }
-  }, [currentPlayerIndex, currentGlobalTurn, gameOver, showConfirmModal]); // Dependencies simplified
+  }, [currentPlayerIndex, actualCurrentTurnIndex, gameOver, showConfirmModal]); // Dependencies simplified
 
   useEffect(() => {
     // Focus input inside confirm modal when it appears
@@ -265,35 +276,42 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                     </div>
                   </td>
                   {players.map((_, playerIdx) => {
-                    const score = turnScores[playerIdx]?.[turnIndex];
-                    const isCurrentPlayerColumn = playerIdx === currentPlayerIndex;
-                    const playersTurnHistoryLength = turnScores[playerIdx]?.length ?? 0;
-                    const isActiveCell = isCurrentPlayerColumn && turnIndex === playersTurnHistoryLength && !gameOver;
+                    const isCurrentPlayerCell = playerIdx === currentPlayerIndex;
+                    const isCurrentTurnCell = turnIndex === actualCurrentTurnIndex;
+                    const isActiveInputCell = isCurrentPlayerCell && isCurrentTurnCell && !gameOver;
+                    const cellScoreValue = turnScores[playerIdx]?.[turnIndex];
+                    const canEditCell = cellScoreValue !== null && cellScoreValue !== undefined && !isActiveInputCell && !gameOver;
+
+                    // --- Add Cell Log ---
+                    if (isActiveInputCell) {
+                      console.log(`[FarkleScoreTable Cell Render] Player ${playerIdx}, Turn ${turnIndex + 1}: isActiveInputCell=${isActiveInputCell}, liveTurnScore=${liveTurnScore}, isFarkleTurn=${isFarkleTurn}`);
+                    }
+                    // ---------------------
 
                     return (
-                      <td
-                        key={`score-${playerIdx}-${turnIndex}`}
-                        className={`p-3 text-center border-r border-gray-100 relative ${ // Added relative for potential future overlays
-                          (playerIdx === players.length - 1) ? 'border-r-0' : ''
-                        } ${ // Background for active cell
-                          isActiveCell ? 'bg-yellow-100 ring-2 ring-yellow-400 ring-inset' : '' 
-                        } ${ // Text color based on board status or Farkle
-                          score === 0 ? 'text-red-600 font-bold' : 
-                          (score !== null && score !== undefined) ? 'text-gray-800' : 
-                          isActiveCell ? 'text-blue-700 font-semibold' : // Style live score differently
-                          isPlayerOnBoard[playerIdx] ? 'text-gray-800' : 'text-gray-400' // Default based on board status
+                      <td 
+                        key={`score-${turnIndex}-${playerIdx}`} 
+                        className={`text-center border-r border-gray-100 ${playerIdx === players.length -1 ? 'border-r-0' : ''} relative ${
+                          isActiveInputCell ? 'px-1 py-1 bg-white' :
+                          isCurrentPlayerCell && !gameOver ? 'p-1 bg-red-50' : 'p-1' 
                         }`}
                         onClick={() => {
-                          // Allow editing only banked, non-zero scores (if desired)
-                          if (score !== null && score !== undefined && score !== 0 && !isActiveCell) { 
-                              onEditBankedScore(playerIdx, turnIndex);
+                          if (canEditCell) {
+                            onEditBankedScore(playerIdx, turnIndex);
                           }
                         }}
                       >
-                        {// Display live score in active cell, banked score otherwise
-                          isActiveCell 
-                            ? (isFarkleTurn ? <span className="text-red-600 font-bold">FARKLE!</span> : liveTurnScore) 
-                            : (score !== null && score !== undefined ? score : '' /* Empty for future turns */)}
+                        {
+                          isActiveInputCell ? (
+                            <span className={`block w-full h-full flex items-center justify-center text-lg font-bold ${isFarkleTurn ? 'text-red-500' : 'text-blue-600'} bg-yellow-100 rounded-md`}>
+                              {isFarkleTurn ? 'F#*KLED!' : (liveTurnScore > 0 ? liveTurnScore : '-')}
+                            </span>
+                          ) : (
+                            <span className={`block w-full h-full flex items-center justify-center text-lg ${canEditCell ? 'cursor-pointer hover:bg-yellow-100 rounded-md transition-colors duration-150' : ''}`}>
+                               {cellScoreValue === 0 ? <span className="text-red-500 font-bold">F#*KLED!</span> : (cellScoreValue !== null && cellScoreValue !== undefined ? cellScoreValue : '' )}
+                            </span>
+                          )
+                        }
                       </td>
                     );
                   })}
@@ -452,7 +470,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                 onClick={onDismissFinalRoundInitiationNotice}
                 className="w-full bg-white hover:bg-blue-100 text-blue-700 font-bold py-3 px-6 rounded-lg text-lg shadow-md hover:shadow-lg transition-all duration-150"
               >
-                OK, Let&apos;s Go!
+                OK, Let's Go!
               </Button>
             </motion.div>
           </motion.div>

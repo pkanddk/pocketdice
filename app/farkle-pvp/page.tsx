@@ -39,6 +39,9 @@ function FarklePvPPageContent() {
   const initializePlayerState = (): PlayerState => ({ total: 0, isOnBoard: false, scores: [] });
   const [playerStates, setPlayerStates] = useState<PlayerState[]>([]);
 
+  // State for score accumulation within a turn segment
+  const [scoreAtTurnSegmentStart, setScoreAtTurnSegmentStart] = useState(0);
+
   // State for game over and final round logic
   const [gameOver, setGameOver] = useState(false);
   const [winningPlayerName, setWinningPlayerName] = useState<string | null>(null);
@@ -47,6 +50,8 @@ function FarklePvPPageContent() {
 
   // State for Farkle rule enforcement
   const [mustSelectDie, setMustSelectDie] = useState(false);
+  const [canRollHotDice, setCanRollHotDice] = useState(false); // State for Hot Dice condition
+  const [currentRollIndices, setCurrentRollIndices] = useState<number[]>([]); // Track indices of dice in current roll segment
   // TODO: Add state for currentRollScoringDice indices if needed for highlighting/selection
 
   // Prepare props for FarkleScoreTable
@@ -63,40 +68,68 @@ function FarklePvPPageContent() {
     }
 
     const currentCounts = dice.reduce((acc, num) => { acc[num] = (acc[num] || 0) + 1; return acc; }, {} as { [key: number]: number });
+    const initialDiceCount = dice.length;
+    let diceUsedInCombos = 0; // Keep track of dice used in higher-order combos
 
-    // Check for three of a kind
-    for (const numStr in currentCounts) {
-      const num = parseInt(numStr, 10);
-      // Check count exists before comparing
-      const count = currentCounts[num]; 
-      if (count !== undefined && count >= 3) { 
+    // --- Check for highest N-of-a-kind first ---
+    // Iterate over actual dice values present
+    const diceNumbersPresent = Object.keys(currentCounts).map(Number).sort((a, b) => b - a); // Process higher numbers first, or sort as needed
+
+    for (const num of diceNumbersPresent) {
+      let count = currentCounts[num]; // We know num exists in currentCounts here
+
+      if (count >= 6) {
+        score += 3000;
+        hasScoringOption = true;
+        currentCounts[num] -= 6;
+        diceUsedInCombos += 6;
+        // If six of a kind, we might consider these dice fully accounted for that number.
+        // For rules where 6 of a kind is the ONLY thing counted for those dice, we can `continue` or `break` if appropriate.
+        // Here, we assume 6 of a kind means those 6 dice are done for this number.
+        continue; // Move to next dice number, as these 6 are fully scored
+      }
+      if (count >= 5) {
+        score += 2000;
+        hasScoringOption = true;
+        currentCounts[num] -= 5;
+        diceUsedInCombos += 5;
+        count -=5; // Update count for further checks on same number if any dice remain
+      }
+      if (count >= 4) {
+        score += 1000;
+        hasScoringOption = true;
+        currentCounts[num] -= 4;
+        diceUsedInCombos += 4;
+        count -=4;
+      }
+      if (count >= 3) {
         hasScoringOption = true;
         if (num === 1) {
           score += 1000;
         } else {
           score += num * 100;
         }
-        currentCounts[num] = count - 3; // Subtract from the locally tracked count
+        currentCounts[num] -= 3;
+        diceUsedInCombos += 3;
       }
     }
 
-    // Check for individual 1s and 5s remaining
-    const count1 = currentCounts[1];
-    if (count1 !== undefined && count1 > 0) {
+    // --- Check for individual 1s and 5s remaining ---
+    const count1 = currentCounts[1] || 0;
+    if (count1 > 0) {
       hasScoringOption = true;
       score += count1 * 100;
     }
-    const count5 = currentCounts[5];
-    if (count5 !== undefined && count5 > 0) {
+    const count5 = currentCounts[5] || 0;
+    if (count5 > 0) {
       hasScoringOption = true;
       score += count5 * 50;
     }
 
-    // TODO: Add more scoring rules (straights, pairs, etc.) and update hasScoringOption accordingly
-    
-    // The returned score here is the *maximum potential* score from this roll based on current rules,
-    // NOT necessarily what the player will take.
-    // hasScoringOption indicates if *any* scoring is possible.
+    // TODO: Add Straights, Three Pairs, Two Triplets, and ensure hasScoringOption is robustly set.
+    // For now, if any score was added, or if specific dice (1s, 5s) exist, assume scoring option.
+    // A more robust hasScoringOption would also check for presence of these other combos.
+
     return { score, hasScoringOption };
   };
   // --- End Farkle Scoring Logic ---
@@ -158,6 +191,7 @@ function FarklePvPPageContent() {
   const nextTurn = () => {
     if (gameOver) return; 
 
+    setCurrentRollIndices([]); // Clear for new turn
     setCurrentPlayerIndex(prevIndex => (prevIndex + 1) % playerNames.length);
     setCurrentRollScore(0);
     setCurrentTurnTotal(0);
@@ -168,6 +202,68 @@ function FarklePvPPageContent() {
   };
 
   const handleRollDice = () => {
+    // Check if we are rolling hot dice first
+    if (canRollHotDice) {
+      console.log("Rolling Hot Dice!");
+      // Set dice to available FIRST, then trigger roll animation
+      setDiceStates(Array(6).fill('available')); 
+      setIsRolling(true);
+      setCanRollHotDice(false); // Consume the hot dice state
+      setMustSelectDie(false); // Reset this flag
+      setIsFarkle(false); // Reset Farkle state
+
+      // Roll all 6 dice
+      const newDiceValues = Array.from({ length: 6 }, () => Math.floor(Math.random() * 6) + 1);
+      const justRolledDiceValues = [...newDiceValues]; // All dice were just rolled
+
+      // Calculate score from the 6 new dice
+      const scoreResult = calculateFarkleScore(justRolledDiceValues);
+
+      console.log('Hot Dice Roll Values:', newDiceValues);
+      console.log('Hot Dice Score Result:', scoreResult);
+
+      let farkleDetected = false;
+      if (!scoreResult.hasScoringOption) {
+        // Hot Dice Farkle! Lose the entire turn total.
+        console.log("HOT DICE FARKLE!");
+        setCurrentTurnTotal(0); // Reset entire turn total
+        farkleDetected = true;
+        setIsFarkle(true); 
+        setCurrentRollScore(0);
+      } else {
+        // Scored on hot dice roll
+        setScoreAtTurnSegmentStart(currentTurnTotal); // Current total becomes the start for this new segment
+        setCurrentRollScore(scoreResult.score); // Show potential score from this new roll
+        setMustSelectDie(true); // Must select from the new roll
+        setCurrentRollIndices([0, 1, 2, 3, 4, 5]); // All dice are part of the new segment
+      }
+
+      // Update dice visually after delay, then advance turn if Farkle
+      setTimeout(() => {
+        setDiceValues(newDiceValues);
+        // setDiceStates(Array(6).fill('available')); // No longer needed here, set when roll initiated
+        setIsRolling(false);
+        if (farkleDetected) {
+          // Hot Dice Farkle turn ends
+          setPlayerStates(prev => 
+            prev.map((ps, index) => {
+              if (index === currentPlayerIndex) {
+                const currentScores = Array.isArray(ps.scores) ? ps.scores : [];
+                return { ...ps, scores: [...currentScores, 0] }; // Record 0 for the turn
+              }
+              return ps;
+            })
+          );
+          console.log("Advancing turn due to Hot Dice Farkle...");
+          checkForGameEndOrAdvanceTurn(); 
+        }
+        // If not Farkle, wait for player to select new dice
+      }, 500); // Shorter delay for hot dice outcome? Or keep farkleDetected ? 1500 : 500
+
+      return; // End execution here for hot dice roll
+    }
+
+    // --- Normal Roll Logic (if not Hot Dice) ---
     if (isRolling || mustSelectDie) return; // Don't roll if animating or must select die
     setIsRolling(true);
     setIsFarkle(false); // Reset Farkle visual state
@@ -198,42 +294,37 @@ function FarklePvPPageContent() {
     console.log('Score Result:', scoreResult);
 
     let farkleDetected = false;
-    if (!scoreResult.hasScoringOption) { // Farkle Condition
+    if (!scoreResult.hasScoringOption) { // Normal Farkle Condition
       console.log("FARKLE!");
-      setCurrentTurnTotal(0); // Reset turn total
+      // setCurrentTurnTotal(0); // REMOVED - Farkle resets turn total via bank failure or next turn initiation
       farkleDetected = true;
-      setIsFarkle(true); // Set visual Farkle state
-      // No score added to currentTurnTotal
-      setCurrentRollScore(0); // No score for this specific roll either
+      setIsFarkle(true); 
+      setCurrentRollScore(0); 
+      // currentTurnTotal for a Farkle is handled when advancing turn or if banking fails due to min score not met.
     } else {
       // Scoring dice exist! Player must select.
-      setCurrentRollScore(scoreResult.score); // Display potential score from this roll
-      // DO NOT add to currentTurnTotal yet.
+      setScoreAtTurnSegmentStart(currentTurnTotal); // Capture score before new selections from this roll
+      setCurrentRollScore(scoreResult.score); // Display potential score from this fresh roll
       setMustSelectDie(true); // Force player to select a die
+      setIsFarkle(false); // Ensure Farkle visual state is off
+      setCurrentRollIndices(diceToRollIndices); // Store indices of the dice just rolled
       // Disable Roll button implicitly via mustSelectDie state
     }
 
     // Update dice values visually after a delay
     setTimeout(() => {
       setDiceValues(newDiceValues);
-      // Keep held dice as held, others available (animation handled by isRolling prop)
-      // Make newly rolled dice available, keep held dice as held.
-      setDiceStates(prevStates => prevStates.map((state, i) => {
-        // If the die was held, it remains held.
+      setDiceStates(prevStates => prevStates.map((state, i) => { 
         if (state === 'held') return 'held';
-        // If the die was available and its value changed, it's now part of the new roll.
-        // For simplicity, if it wasn't held, it's part of the roll, so 'available'.
-        // This could be refined if we only wanted to mark dice that actually changed value.
         return 'available'; 
       })); 
       setIsRolling(false);
       
       if (farkleDetected) {
-        // Player Farkled. Record their score as 0.
+        // Normal Farkle - just record score 0 and advance
         setPlayerStates(prev => 
           prev.map((ps, index) => {
             if (index === currentPlayerIndex) {
-              // Ensure ps.scores is an array before spreading
               const currentScores = Array.isArray(ps.scores) ? ps.scores : [];
               return { ...ps, scores: [...currentScores, 0] }; 
             }
@@ -241,71 +332,88 @@ function FarklePvPPageContent() {
           })
         );
         console.log("Advancing turn due to Farkle...");
-        // Call checkForGameEndOrAdvanceTurn directly, removing the nested setTimeout.
         checkForGameEndOrAdvanceTurn(); 
       }
-      // If not Farkle, the game state waits for the player to select a die (mustSelectDie is true)
-    }, farkleDetected ? 1500 : 500); // Delay for dice animation and Farkle visibility
+    }, farkleDetected ? 1500 : 500); 
   };
 
   const handleToggleHold = (index: number) => {
-    if (isRolling) return; // Can't interact during roll animation
+    if (isRolling) {
+      console.log("[ToggleHold] Cannot interact during roll.");
+      return;
+    }
+
+    // Tentatively toggle the state of the clicked die
+    const newTentativeDiceStates = [...diceStates];
+    newTentativeDiceStates[index] = diceStates[index] === 'held' ? 'available' : 'held';
 
     if (mustSelectDie) {
-      // Player MUST select a scoring die from the recent roll
-      const selectedValue = diceValues[index];
-      const isSelectedDieAvailable = diceStates[index] === 'available';
+      // --- Phase 1: Must select scoring dice from the current roll segment ---
+      // Commit the current click to diceStates immediately so the player sees their selection
+      // and can build up a scoring combination.
+      setDiceStates(newTentativeDiceStates); // COMMIT IMMEDIATELY
+
+      // Evaluate based on this newly committed state (using newTentativeDiceStates as it's synchronous)
+      const currentSegmentHeldIndices = currentRollIndices.filter(i => newTentativeDiceStates[i] === 'held');
+      const currentSegmentHeldValues = currentSegmentHeldIndices.map(i => diceValues[i]).filter((v): v is number => v !== undefined);
+      const { score: currentSegmentScore, hasScoringOption: segmentHasScore } = calculateFarkleScore(currentSegmentHeldValues);
+
+      console.log(`[ToggleHold - MustSelect] Index: ${index}, Current Segment Selection: ${JSON.stringify(currentSegmentHeldValues)}, Segment Score: ${currentSegmentScore}, Has Score: ${segmentHasScore}`);
       
-      // Basic check: Is it a 1 or 5? (Expand later for combos)
-      // Also ensure it's not already held from a previous selection in this roll sequence
-      if (isSelectedDieAvailable && (selectedValue === 1 || selectedValue === 5)) {
-        console.log(`Player selected scoring die: Index ${index}, Value ${selectedValue}`);
+      // Update scores based on the current selection in the segment
+      setCurrentTurnTotal(scoreAtTurnSegmentStart + currentSegmentScore);
+      setCurrentRollScore(currentSegmentScore);
+
+      if (segmentHasScore && currentSegmentScore > 0) {
+        // A scoring combination has been selected from the current roll.
+        // The 'mustSelectDie' condition is now satisfied for this decision point.
+        setMustSelectDie(false); 
+        console.log(`   -> VALID scoring selection. Segment score: ${currentSegmentScore}. 'mustSelectDie' is now false. Player can roll/bank.`);
         
-        // Mark as held
-        setDiceStates(prevStates => {
-          const newStates = [...prevStates];
-          newStates[index] = 'held';
-          return newStates;
-        });
-
-        // Add score to turn total
-        const scoreToAdd = selectedValue === 1 ? 100 : 50;
-        setCurrentTurnTotal(prev => prev + scoreToAdd);
-
-        // Player has fulfilled the requirement
-        setMustSelectDie(false);
-        setCurrentRollScore(0); // Reset roll score display
-
+        if (newTentativeDiceStates.every(state => state === 'held')) {
+          console.log("   -> HOT DICE! All dice scored.");
+          setCanRollHotDice(true);
+        } else {
+          setCanRollHotDice(false);
+        }
       } else {
-        console.log(`Invalid selection: Clicked die Index ${index} (Value ${selectedValue}) is not a valid scoring option or is already held.`);
-        // Optionally provide user feedback (e.g., flash the die red?)
+        // The current selection from the segment does not score. 
+        // 'mustSelectDie' remains true. Player must continue to select/unselect dice from this segment
+        // until a scoring combination is formed or they Farkle (which is handled by roll if no selection made).
+        console.log(`   -> Current selection for segment does not score. 'mustSelectDie' remains true.`);
+        setCanRollHotDice(false); // Ensure Hot Dice is off if current selection isn't scoring
       }
     } else {
-      // Normal hold/unhold logic (if player has already selected 
-      // or if the roll resulted in no scoring options initially - though Farkle handles that)
-      // For now, allow holding/unholding available dice freely if not forced to select.
-      // This allows strategizing before rolling again.
-       setDiceStates(prevStates => {
-        const newStates = [...prevStates];
-        if (newStates[index] === 'available') {
-          newStates[index] = 'held';
-        } else if (newStates[index] === 'held') {
-          // Allow unholding dice previously selected *within the same turn sequence*?
-          // Standard Farkle usually doesn't allow un-setting aside dice.
-          // Let's enforce that: once held/set-aside, it stays held for the turn.
-          console.log("Cannot un-hold die once selected in Farkle."); // Keep it simple
-          // Or allow unholding: newStates[index] = 'available'; 
-        } else {
-          // If state is neither 'available' nor 'held', do nothing
-        }
-        console.log(`Toggled hold for die ${index}. New state: ${newStates[index]}.`);
-        return newStates;
-      });
+      // --- Phase 2: Optionally adding more dice or unselecting (mustSelectDie is false) ---
+      // In this phase, any click updates the dice state, and the score is re-evaluated.
+      // The player is responsible for the validity of their final selection before rolling/banking.
+      setDiceStates(newTentativeDiceStates); // COMMIT IMMEDIATELY
+
+      const currentSegmentTentativelyHeldIndices = currentRollIndices.filter(i => newTentativeDiceStates[i] === 'held');
+      const currentSegmentTentativelyHeldValues = currentSegmentTentativelyHeldIndices
+        .map(i => diceValues[i])
+        .filter((v): v is number => v !== undefined);
+
+      const { score: newSegmentScore, hasScoringOption: newSegmentHasScore } = calculateFarkleScore(currentSegmentTentativelyHeldValues);
+      console.log(`[ToggleHold - Optional] Index: ${index}, Current Segment Selection: ${JSON.stringify(currentSegmentTentativelyHeldValues)}, New Segment Score: ${newSegmentScore}, Has Score: ${newSegmentHasScore}`);
+        
+      setCurrentTurnTotal(scoreAtTurnSegmentStart + newSegmentScore);
+      setCurrentRollScore(newSegmentScore); 
+
+      if (newTentativeDiceStates.every(state => state === 'held')) {
+        console.log("   -> HOT DICE! All dice scored.");
+        setCanRollHotDice(true);
+      } else {
+        setCanRollHotDice(false);
+      }
+      // The old validity check based on score improvement or clearing the segment is removed.
+      // console.log(`   -> VALID optional action. Segment Score: ${newSegmentScore}. New Turn Total: ${scoreAtTurnSegmentStart + newSegmentScore}`);
     }
   };
 
   const handleBankScore = () => {
     const scoreToBank = currentTurnTotal; 
+    setCurrentRollIndices([]); // Clear when banking
 
     if (gameOver) return; // Prevent banking if game is already over
 
@@ -366,6 +474,10 @@ function FarklePvPPageContent() {
       let nextPlayerStates: PlayerState[] = [];
       let playerTriggeredFinalRound: number | null = finalRoundTriggeredBy; // Keep track if triggered this bank
       let nextPlayersCompletedFinalRound: boolean[] = playersCompletedFinalRound;
+
+      // --- Add Log --- 
+      console.log(`[handleBankScore] Player ${currentPlayerIndex} banking score: ${scoreToBank}`);
+      // --------------- 
 
       setPlayerStates(prev => {
         // Use map to create a new array based on the previous state
@@ -504,18 +616,28 @@ function FarklePvPPageContent() {
     );
   }
 
-  const INITIAL_DISPLAY_TURNS = 10; // Define the minimum number of turns to show
+  const ROWS_CHUNK_SIZE = 5;
+  const INITIAL_DISPLAY_TURNS = 10; // Should ideally be a multiple of ROWS_CHUNK_SIZE
 
-  // Calculate max turns completed for dynamic table display, ensuring minimum display count
-  const actualMaxTurns = playerStates.length > 0 
-    ? Math.max(0, ...playerStates.map(ps => ps.scores.length)) // Find the highest number of scores recorded by any player
+  const actualMaxTurnsCompleted = playerStates.length > 0
+    ? Math.max(0, ...playerStates.map(ps => ps.scores.length))
     : 0;
-  const displayTurnCount = Math.max(INITIAL_DISPLAY_TURNS, actualMaxTurns);
+
+  const highestTurnNumberRequiringRow = actualMaxTurnsCompleted + 1;
+  let calculatedDisplayTurnCount = INITIAL_DISPLAY_TURNS;
+
+  if (highestTurnNumberRequiringRow > INITIAL_DISPLAY_TURNS) {
+    calculatedDisplayTurnCount = Math.ceil(highestTurnNumberRequiringRow / ROWS_CHUNK_SIZE) * ROWS_CHUNK_SIZE;
+  }
+  const displayTurnCount = Math.max(INITIAL_DISPLAY_TURNS, calculatedDisplayTurnCount);
 
   const currentYear = new Date().getFullYear(); // Get current year
 
   // Calculate current round for header display
   const currentRound = (playerStates[0]?.scores?.length || 0) + 1;
+
+  // Calculate the index of the turn the current player is on (0-based)
+  const actualCurrentTurnIndex = playerStates[currentPlayerIndex]?.scores?.length || 0;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4 font-sans">
@@ -553,6 +675,7 @@ function FarklePvPPageContent() {
           MINIMUM_TO_GET_ON_BOARD={MINIMUM_TO_GET_ON_BOARD}
           finalRoundTriggeredBy={finalRoundTriggeredBy}
           playersCompletedFinalRound={playersCompletedFinalRound}
+          canRollHotDice={canRollHotDice}
         />
       </div>
 
@@ -564,20 +687,20 @@ function FarklePvPPageContent() {
             playerTotals={playerTotals} 
             isPlayerOnBoard={isPlayerOnBoard} 
             currentPlayerIndex={currentPlayerIndex}
-            currentGlobalTurn={0} // This prop might be less relevant now
-            displayedTurnCount={displayTurnCount} // Use the calculated count ensuring minimum
-            currentTurnInput="" 
-            gameOver={gameOver} // Pass gameOver state
-            liveTurnScore={currentTurnTotal} // Pass current turn total for live display
-            isFarkleTurn={isFarkle} // Pass Farkle status for potential active cell display
-            onInputChange={() => {}} 
+            actualCurrentTurnIndex={actualCurrentTurnIndex}
+            displayedTurnCount={displayTurnCount}
+            currentTurnInput=""
+            gameOver={gameOver}
+            liveTurnScore={currentTurnTotal}
+            isFarkleTurn={isFarkle}
+            onInputChange={() => {}}
             onBankScore={() => {}}
             minimumToGetOnBoard={MINIMUM_TO_GET_ON_BOARD}
-            showFinalTallyModal={gameOver} // Show modal when game is over
-            winningPlayerName={winningPlayerName} // Pass winner's name
+            showFinalTallyModal={gameOver}
+            winningPlayerName={winningPlayerName}
+            gameMessage={null}
+            winningScore={WINNING_SCORE}
             onCloseFinalTallyModal={() => { 
-              // Optionally, reset parts of game or allow viewing scores without interaction
-              // For now, just log. Could also set gameOver to false to hide it, but that might be confusing.
               console.log("Final tally modal closed by user.");
             }} 
             showRulesModal={false} 
@@ -589,9 +712,9 @@ function FarklePvPPageContent() {
             editModalValue="" 
             onEditModalValueChange={() => {}} 
             selectedCellToEdit={null} 
-            showFinalRoundInitiationNotice={finalRoundTriggeredBy !== null && !gameOver} // Show notice if final round active and game not over
+            showFinalRoundInitiationNotice={finalRoundTriggeredBy !== null && !gameOver}
             finalRoundInitiationMessage={finalRoundTriggeredBy !== null ? `${playerNames[finalRoundTriggeredBy]} has reached ${WINNING_SCORE}! All other players get one more turn.` : null}
-            onDismissFinalRoundInitiationNotice={() => { /* Can allow dismissing this notice */ }}
+            onDismissFinalRoundInitiationNotice={() => { }}
           />
         </div>
       )}
