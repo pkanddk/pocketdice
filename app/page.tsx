@@ -146,10 +146,13 @@ export default function HomePage() {
         handleStartGame();
       }
     };
-    document.addEventListener('keypress', handleKeyPress);
-    return () => {
-      document.removeEventListener('keypress', handleKeyPress);
-    };
+    // Ensure this code only runs on the client-side
+    if (typeof document !== 'undefined') {
+      document.addEventListener('keypress', handleKeyPress);
+      return () => {
+        document.removeEventListener('keypress', handleKeyPress);
+      };
+    }
   }, [handleStartGame, isStartDisabled]);
 
   const handleNameChange = (index: number, value: string) => {
