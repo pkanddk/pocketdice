@@ -1,4 +1,5 @@
-import { DiceValues } from './GameLogic'
+import { DiceValues } from './GameLogic' // TODO: Resolve: Module '"./GameLogic"' has no exported member 'DiceValues'.
+// The 'DiceValues' type below needs to be correctly defined or imported.
 
 export class ComputerPlayerAI {
   constructor() {}
@@ -13,25 +14,25 @@ export class ComputerPlayerAI {
 
     if (maxCount >= 3) {
       // Try for Three of a Kind, Four of a Kind, or Yahtzee
-      return diceValues.map(value => counts[value] === maxCount)
+      return diceValues.map((value: number) => counts[value] === maxCount)
     } else if (this.isLargeStraightPossible(diceValues)) {
       // Try for Large Straight
-      return diceValues.map(value => value >= 2 && value <= 6)
+      return diceValues.map((value: number) => value >= 2 && value <= 6)
     } else if (this.isSmallStraightPossible(diceValues)) {
       // Try for Small Straight
-      return diceValues.map(value => value >= 1 && value <= 5)
+      return diceValues.map((value: number) => value >= 1 && value <= 5)
     } else if (Object.values(counts).filter(count => count === 2).length >= 2) {
       // Try for Full House
-      return diceValues.map(value => counts[value] === 2)
+      return diceValues.map((value: number) => counts[value] === 2)
     } else {
       // Default to keeping the highest value dice
-      const maxValue = Math.max(...diceValues)
-      return diceValues.map(value => value === maxValue)
+      const maxValue = Math.max(...diceValues) // Assumes diceValues is spreadable (e.g., number[])
+      return diceValues.map((value: number) => value === maxValue)
     }
   }
 
   private getCounts(diceValues: DiceValues): Record<number, number> {
-    return diceValues.reduce((counts, value) => {
+    return diceValues.reduce((counts: Record<number, number>, value: number) => {
       counts[value] = (counts[value] || 0) + 1
       return counts
     }, {} as Record<number, number>)
@@ -58,15 +59,15 @@ export class ComputerPlayerAI {
     // First, check for high-scoring categories
     for (const priority of priorities) {
       const index = availableCategories.indexOf(priority)
-      if (index !== -1 && scores[index] > 0) {
-        return availableCategories[index]
+      if (index !== -1 && scores[index] !== undefined && scores[index] > 0) {
+        return availableCategories[index]!; // Asserting non-null as index is valid and string[]
       }
     }
     
     // If no high-scoring categories, find the highest score
     const maxScore = Math.max(...scores)
     const maxScoreIndex = scores.indexOf(maxScore)
-    return availableCategories[maxScoreIndex]
+    return availableCategories[maxScoreIndex]!; // Asserting non-null based on original logic
   }
 }
 

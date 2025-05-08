@@ -31,6 +31,7 @@ interface FarkleDiceAreaProps {
   finalRoundTriggeredBy: number | null;
   playersCompletedFinalRound: boolean[];
   canRollHotDice: boolean; // Add prop for hot dice
+  isComputerThinking?: boolean; // Added prop for AI turn
 }
 
 export const FarkleDiceArea: React.FC<FarkleDiceAreaProps> = ({
@@ -50,7 +51,8 @@ export const FarkleDiceArea: React.FC<FarkleDiceAreaProps> = ({
   MINIMUM_TO_GET_ON_BOARD,
   finalRoundTriggeredBy,
   playersCompletedFinalRound,
-  canRollHotDice // Destructure prop
+  canRollHotDice, // Destructure prop
+  isComputerThinking = false // Destructure and default to false
 }) => {
 
   // Ensure diceValues has length 6 for rendering, provide defaults if not
@@ -59,13 +61,15 @@ export const FarkleDiceArea: React.FC<FarkleDiceAreaProps> = ({
 
   // Determine if bank button should be disabled based on board status and minimum
   const currentPlayerState = playerStates[currentPlayerIndex];
-  const canBankScore = !isRolling && !isFarkle && !gameOver && !mustSelectDie && currentTurnTotal > 0 && 
-                      (currentPlayerState?.isOnBoard || currentTurnTotal >= MINIMUM_TO_GET_ON_BOARD) &&
-                      !(finalRoundTriggeredBy !== null && playersCompletedFinalRound[currentPlayerIndex]);
+  const canBankScore = !isComputerThinking && // Disable if AI is thinking
+                       !isRolling && !isFarkle && !gameOver && !mustSelectDie && currentTurnTotal > 0 && 
+                       (currentPlayerState?.isOnBoard || currentTurnTotal >= MINIMUM_TO_GET_ON_BOARD) &&
+                       !(finalRoundTriggeredBy !== null && playersCompletedFinalRound[currentPlayerIndex]);
 
   // Determine if roll button should be disabled
-  const canRollNormally = !isRolling && !isFarkle && !gameOver && !mustSelectDie && 
-                         !(finalRoundTriggeredBy !== null && playersCompletedFinalRound[currentPlayerIndex]);
+  const canRollNormally = !isComputerThinking && // Disable if AI is thinking
+                          !isRolling && !isFarkle && !gameOver && !mustSelectDie && 
+                          !(finalRoundTriggeredBy !== null && playersCompletedFinalRound[currentPlayerIndex]);
 
 
   return (
@@ -100,14 +104,14 @@ export const FarkleDiceArea: React.FC<FarkleDiceAreaProps> = ({
         <div className="flex space-x-3 mt-4 mb-2"> { /* Added margin */ }
           <Button 
             onClick={handleRollDice} 
-            disabled={!(canRollNormally || canRollHotDice)} // Update disabled logic
+            disabled={isComputerThinking || !(canRollNormally || canRollHotDice)} // Updated: Disable if AI thinking or other conditions
             className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {canRollHotDice ? 'Roll Hot Dice!' : 'Roll Dice'} {/* Update button text */}
           </Button>
           <Button 
             onClick={handleBankScore} 
-            disabled={!canBankScore}
+            disabled={isComputerThinking || !canBankScore} // Updated: Disable if AI thinking or other conditions
             className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
           >
             Bank Score

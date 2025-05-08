@@ -20,10 +20,22 @@ const GAME_MODE_DISPLAY_NAMES: { [key: string]: string } = {
   'single': "Yahtzee - Player vs A.I.",
   'score-card': "Yahtzee - Score Card",
   'duel': "Yahtzee - Player vs Player",
+  'yahtzee-pvp': "Yahtzee - Player vs Player",
   'farkle-pvp': "Farkle - Player vs Player",
   'farkle-scorecard': "Farkle - Score Card",
+  'farkle-pvc': "Farkle - Player vs Computer",
   [BACKGAMMON_MODE_KEY]: "Backgammon",
 };
+
+// Dynamically add display names for Farkle PvP with player counts
+for (let i = 2; i <= 8; i++) {
+  GAME_MODE_DISPLAY_NAMES[`farkle-pvp-${i}`] = `Farkle - ${i} Players`;
+}
+
+// Dynamically add display names for Yahtzee PvP with player counts
+for (let i = 2; i <= 8; i++) {
+  GAME_MODE_DISPLAY_NAMES[`yahtzee-pvp-${i}`] = `Yahtzee - ${i} Players`;
+}
 
 // Add a helper function to generate properly encoded Backgammon game links
 function getBackgammonLink(names: string[]) {
@@ -43,10 +55,18 @@ export default function HomePage() {
 
   useEffect(() => {
     let requiredLength = 0;
+    let currentSelectedPlayerCount = playerCount; 
+
+    if (gameMode.startsWith('farkle-pvp-')) {
+      // This logic might be redundant if handleSelectGameMode correctly sets gameMode to base and playerCount
+    } else if (gameMode.startsWith('yahtzee-pvp-')) {
+      // This logic might be redundant if handleSelectGameMode correctly sets gameMode to base and playerCount
+    }
+
     if (gameMode !== BACKGAMMON_MODE_KEY) {
-      if (gameMode === 'single') {
+      if (gameMode === 'single' || gameMode === 'farkle-pvc') { 
         requiredLength = 1;
-      } else if (gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'farkle-pvp' || gameMode === 'farkle-scorecard') {
+      } else if (gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'farkle-pvp' || gameMode === 'farkle-scorecard' || gameMode === 'yahtzee-pvp') {
         requiredLength = playerCount;
       }
       // Reset opponent type if switching away from Backgammon
@@ -98,9 +118,9 @@ export default function HomePage() {
   };
 
   let numInputsToShow = 0;
-  if (gameMode === 'single') {
+  if (gameMode === 'single' || gameMode === 'farkle-pvc') { 
     numInputsToShow = 1;
-  } else if (gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'farkle-pvp' || gameMode === 'farkle-scorecard') {
+  } else if (gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'farkle-pvp' || gameMode === 'farkle-scorecard' || gameMode === 'yahtzee-pvp') {
     numInputsToShow = playerCount;
   } else if (gameMode === BACKGAMMON_MODE_KEY) {
     numInputsToShow = backgammonOpponentType === OPPONENT_COMPUTER ? 1 : 2;
@@ -115,25 +135,29 @@ export default function HomePage() {
       return; 
     }
 
-    const namesForRoute = playerNames.slice(0, numInputsToShow); // Use numInputsToShow for general case
+    // For farkle-pvp or farkle-pvc, numInputsToShow is derived from playerCount or 1 respectively
+    const namesForRoute = playerNames.slice(0, numInputsToShow);
 
     if (gameMode === 'single') {
       router.push(`/game/single-player?name=${encodeURIComponent(namesForRoute[0] || '')}`);
-    } else if (gameMode === 'score-card' || gameMode === 'duel') {
+    } else if (gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'yahtzee-pvp') {
       const route = gameMode === 'score-card' ? '/score-card' : `/game/${playerCount}`;
       router.push(`${route}?names=${encodeURIComponent(JSON.stringify(namesForRoute))}`);
     } else if (gameMode === 'farkle-scorecard') {
       const route = '/farkle-scorecard';
       const queryString = encodeURIComponent(JSON.stringify(namesForRoute));
-      console.log("[Farkle Scorecard Navigation] Mode:", gameMode, "Route:", route, "PlayerCount:", playerCount, "Names being passed:", namesForRoute, "QueryString:", queryString);
       router.push(`${route}?names=${queryString}`);
-    } else if (gameMode === 'farkle-pvp') {
+    } else if (gameMode === 'farkle-pvp') { // Handles all X-player Farkle games
       const route = '/farkle-pvp';
-      // For farkle-pvp, playerCount is the correct length specifier used in its useEffect
+      // playerNames has been adjusted by useEffect based on playerCount, which was set by handleSelectGameMode
       const pvpNamesToPass = playerNames.slice(0, playerCount); 
       const queryString = encodeURIComponent(JSON.stringify(pvpNamesToPass));
-      console.log("[Farkle PvP Navigation] Mode:", gameMode, "Route:", route, "PlayerCount:", playerCount, "Names being passed:", pvpNamesToPass, "QueryString:", queryString);
       router.push(`${route}?players=${queryString}`);
+    } else if (gameMode === 'farkle-pvc') { // New route for Farkle Player vs Computer
+      const route = '/farkle-pvc';
+      // playerNames should have 1 element for PVC. Get the first name, default if empty.
+      const humanPlayerName = playerNames[0] || "Player 1"; 
+      router.push(`${route}?playerName=${encodeURIComponent(humanPlayerName)}&gameMode=farkle-pvc`);
     } else if (gameMode === BACKGAMMON_MODE_KEY) {
       const backgammonLink = getBackgammonLink(namesForRoute);
       router.push(backgammonLink);
@@ -166,8 +190,32 @@ export default function HomePage() {
   }
 
   const handleSelectGameMode = useCallback((modeKey: string) => {
-    setGameMode(modeKey);
-    setSelectedGameModeName(GAME_MODE_DISPLAY_NAMES[modeKey] || "");
+    let baseMode = modeKey;
+    let countFromMode = 0;
+
+    if (modeKey.startsWith('farkle-pvp-')) {
+      const parts = modeKey.split('-');
+      countFromMode = parseInt(parts.pop() || '2', 10);
+      baseMode = 'farkle-pvp'; 
+      setPlayerCount(countFromMode); 
+    } else if (modeKey.startsWith('yahtzee-pvp-')) {
+      const parts = modeKey.split('-');
+      countFromMode = parseInt(parts.pop() || '2', 10);
+      baseMode = 'yahtzee-pvp';
+      setPlayerCount(countFromMode);
+    } else if (modeKey === 'farkle-pvc') {
+      setPlayerCount(1); 
+    } else if (modeKey === 'single') {
+      setPlayerCount(1);
+    } else if (modeKey !== 'score-card' && modeKey !== 'duel' && !modeKey.startsWith('farkle-') && !modeKey.startsWith('yahtzee-')) {
+        // This condition might need refinement to ensure it doesn't incorrectly reset playerCount for Yahtzee/Farkle scorecards
+        // if (modeKey === 'single') { // This inner check is now handled above
+        // }
+    }
+
+    setGameMode(baseMode); 
+    setSelectedGameModeName(GAME_MODE_DISPLAY_NAMES[modeKey] || GAME_MODE_DISPLAY_NAMES[baseMode] || "");
+
     if (modeKey !== BACKGAMMON_MODE_KEY) {
         setBackgammonOpponentType(OPPONENT_PLAYER);
     }
@@ -218,7 +266,7 @@ export default function HomePage() {
                   currentSelectionName={selectedGameModeName}
               />
 
-              {(gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'farkle-pvp' || gameMode === 'farkle-scorecard') && (
+              {(gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'farkle-pvp' || gameMode === 'farkle-scorecard' || gameMode === 'yahtzee-pvp') && (
                 <div className="relative mt-4">
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                     <Users className="h-5 w-5 text-blue-500" />

@@ -10,6 +10,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { GameRules } from './GameRules'
 import confetti from 'canvas-confetti'
 
+export type DiceValues = number[];
+
 const triggerConfetti = () => {
   confetti({
     particleCount: 100,
