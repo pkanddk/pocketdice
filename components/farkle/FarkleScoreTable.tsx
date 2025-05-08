@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion'; // For modal
 // @ts-ignore - Suppress canvas-confetti type error for now
 import confetti from 'canvas-confetti'; // For winner celebration
-import { ChevronUp, ChevronDown, X as LucideX, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6 } from 'lucide-react';
+import { ChevronUp, ChevronDown, X as LucideX, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Info } from 'lucide-react';
 import { FarkleRulesDisplay } from './FarkleRulesDisplay'; // Import the new rules display component
 
 const hideSpinnerClass = "appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
@@ -174,13 +174,15 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                 <Button
                   onClick={onToggleRulesModal}
                   variant="ghost"
-                  // Keep adjusted padding and text size for mobile
-                  className={`w-full h-full text-left font-semibold text-sm sm:text-base flex justify-between items-center text-white hover:bg-red-500 focus:bg-red-500 transition-colors duration-200 rounded-none ${
-                    showRulesModal ? 'bg-red-600' : 'bg-blue-600'
+                  // MODIFIED: Text/icon to red-600 on hover. Background remains consistent.
+                  className={`w-full h-full text-left font-semibold text-sm sm:text-base flex justify-between items-center text-white hover:text-red-600 transition-colors duration-200 rounded-none ${
+                    showRulesModal 
+                      ? 'bg-red-600 hover:bg-red-600' 
+                      : 'bg-blue-600 hover:bg-blue-600'
                   }`}
                 >
                   Game Rules
-                  {showRulesModal ? <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5" /> : <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5" />}
+                  <Info className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Button>
               </th>
               {players.map((player, index) => (
