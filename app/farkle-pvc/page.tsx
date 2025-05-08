@@ -7,7 +7,7 @@ import { FarkleDiceArea } from '@/components/farkle/FarkleDiceArea';
 import { Button } from '@/components/ui/button';
 import { Dice3 } from 'lucide-react';
 import { UniversalFooter } from '@/components/common/UniversalFooter';
-import { FarkleAI } from '../../components/FarkleAI';
+import { FarkleAI } from '@/components/FarkleAI';
 
 const MINIMUM_TO_GET_ON_BOARD = 500;
 const WINNING_SCORE = 10000;
