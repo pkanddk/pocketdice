@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { FarkleScoreTable } from '../farkle/FarkleScoreTable';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation'; // For Reset Game (New Players)
+import { UniversalFooter } from '@/components/common/UniversalFooter'; // Import the new footer
 // import { toast } from 'react-hot-toast'; // Removed for now to avoid dependency issues
 
 const MINIMUM_TO_GET_ON_BOARD = 500;
@@ -513,18 +514,16 @@ export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players }) => 
       <div className="mt-8 w-full max-w-md mx-auto flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-4 sm:px-0">
         <Button 
           onClick={() => handleResetGame(false)} 
-          className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full text-lg">
-          New Game (Same Players)
+          className="w-full sm:flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out text-lg">
+          New Game, Same Players
         </Button>
         <Button 
           onClick={() => handleResetGame(true)} 
-          className="w-full sm:flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full text-lg">
-          Reset Game (New Players)
+          className="w-full sm:flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out text-lg">
+          New Game, New Players
         </Button>
       </div>
-      <footer className="mt-12 pt-4 text-center text-sm text-gray-500">
-        <p>Pocket Score © {new Date().getFullYear()} | a pk and dk app</p>
-      </footer>
+      <UniversalFooter />
     </div>
   );
 }; 

@@ -6,6 +6,7 @@ import { FarkleScoreTable } from '@/components/farkle/FarkleScoreTable';
 import { FarkleDiceArea } from '@/components/farkle/FarkleDiceArea';
 import { Button } from '@/components/ui/button';
 import { Dice3 } from 'lucide-react';
+import { UniversalFooter } from '@/components/common/UniversalFooter';
 
 const MINIMUM_TO_GET_ON_BOARD = 500;
 const WINNING_SCORE = 10000;
@@ -1022,9 +1023,7 @@ function FarklePvPPageContent() {
         </Button>
       </div>
 
-      <footer className="mt-12 py-4 text-center text-sm text-gray-500 border-t border-gray-300 w-full max-w-2xl">
-        <p>Pocket Score &copy; {currentYear} | a pk and dk app</p>
-      </footer>
+      <UniversalFooter />
 
     </div>
   );

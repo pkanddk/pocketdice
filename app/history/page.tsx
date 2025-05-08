@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { UniversalFooter } from '@/components/common/UniversalFooter'
 
 interface GameData {
   date: string
@@ -50,9 +51,7 @@ export default function HistoryPage() {
           <Button className="rounded-full px-8 py-2 bg-blue-600 hover:bg-blue-700 transition-colors duration-300">Back to Home</Button>
         </Link>
       </div>
-      <footer className="mt-auto pt-8 text-center text-sm text-gray-500">
-        <p>Pocket Score © {new Date().getFullYear()} | a pk and dk app</p>
-      </footer>
+      <UniversalFooter />
     </div>
   )
 }

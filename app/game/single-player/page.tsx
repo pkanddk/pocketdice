@@ -6,6 +6,7 @@ import { Logo } from '@/components/Logo'
 import { JerryLogo } from '@/components/JerryLogo'
 import { MernLogo } from '@/components/MernLogo'
 import { GameLogic } from '@/components/GameLogic'
+import { UniversalFooter } from '@/components/common/UniversalFooter'
 
 function SinglePlayerGamePage() {
 const searchParams = useSearchParams()
@@ -15,11 +16,10 @@ const [gameState, setGameState] = useState({
  isMernGame: false,
 })
 
-const [scores, setScores] = useState<Array<Array<{ value: number | null; locked: boolean }>>>(() => 
- Array(2).fill(null).map(() => 
-   Array(13).fill(null).map(() => ({ value: null, locked: false }))
- )
-);
+const [scores, setScores] = useState<Array<Array<{ value: number | null; locked: boolean }>>>([])
+const [playerName, setPlayerName] = useState("Player 1")
+const [gameStarted, setGameStarted] = useState(false)
+const [playerNames, setPlayerNames] = useState<string[]>([])
 
 const name = useMemo(() => searchParams.get('name') || 'Player 1', [searchParams])
 
@@ -33,7 +33,51 @@ useEffect(() => {
  }))
 }, [name])
 
-const { playerName, isJerryGame, isMernGame } = gameState
+useEffect(() => {
+  const paramPlayerName = searchParams.get('playerName');
+  if (paramPlayerName) {
+    setPlayerName(decodeURIComponent(paramPlayerName));
+  }
+  if (!gameStarted && playerName) {
+    const initialPlayerNames = [playerName, 'Computer'];
+    setPlayerNames(initialPlayerNames);
+    setScores(Array(initialPlayerNames.length).fill(null).map(() => 
+      Array(13).fill(null).map(() => ({ value: null, locked: false }))
+    ));
+    setGameStarted(true);
+  }
+}, [searchParams, gameStarted, playerName]);
+
+const checkForSpecialGames = (currentNames: string[]) => {
+  const lowerCaseNames = currentNames.map(cn => cn.toLowerCase().replace(/\s+/g, ''));
+  const jerryActivated = lowerCaseNames.includes("jerrymccall");
+  const mernActivated = lowerCaseNames.includes("mernmccall");
+
+  let newIsJerryGame = false;
+  let newIsMernGame = false;
+
+  if (jerryActivated && mernActivated) {
+    const jerryIndex = lowerCaseNames.indexOf("jerrymccall");
+    const mernIndex = lowerCaseNames.indexOf("mernmccall");
+    newIsJerryGame = jerryIndex < mernIndex;
+    newIsMernGame = jerryIndex >= mernIndex;
+  } else {
+    newIsJerryGame = jerryActivated;
+    newIsMernGame = mernActivated;
+  }
+  if (newIsJerryGame !== gameState.isJerryGame || newIsMernGame !== gameState.isMernGame) {
+    setGameState(prev => ({...prev, isJerryGame: newIsJerryGame, isMernGame: newIsMernGame }));
+  }
+};
+
+const { playerName: gamePlayerName, isJerryGame, isMernGame } = gameState
+
+const handleResetGame = () => {
+  const currentPlayersForReset = [gamePlayerName, 'Computer'];
+  setScores(Array(currentPlayersForReset.length).fill(null).map(() => 
+    Array(13).fill(null).map(() => ({ value: null, locked: false }))
+  ));
+};
 
 return (
  <div className={`container mx-auto px-4 py-4 min-h-screen flex flex-col ${
@@ -58,16 +102,15 @@ return (
      </p> */}
    </div>
    <GameLogic 
-     players={[playerName, 'Computer']} 
+     players={[gamePlayerName, 'Computer']} 
      isJerryGame={isJerryGame} 
      isMernGame={isMernGame}
      scores={scores}
      setScores={(newScores) => setScores(newScores)}
      isSinglePlayer={true}
+     onResetGame={handleResetGame}
    />
-   <footer className="mt-auto pt-8 text-center text-sm text-gray-500">
-     <p>Pocket Score © {new Date().getFullYear()} | a pk and dk app</p>
-   </footer>
+   <UniversalFooter />
  </div>
 )
 }

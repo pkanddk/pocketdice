@@ -6,6 +6,7 @@ import { Logo } from '@/components/Logo'
 import { JerryLogo } from '@/components/JerryLogo'
 import { MernLogo } from '@/components/MernLogo'
 import { ScoreCardLogic } from '@/components/ScoreCardLogic'
+import { UniversalFooter } from '@/components/common/UniversalFooter'
 
 function ScoreCardPage() {
 const searchParams = useSearchParams()
@@ -44,7 +45,7 @@ const checkForSpecialGames = (names: string[]) => {
  }
 }
 
-const getDisplayNames = playerNames.map(name => {
+const getDisplayNames = playerNames.map((name: string) => {
  const lowerName = name.toLowerCase().replace(/\s+/g, '')
  if (lowerName === "jerrymccall") return "Jerry"
  if (lowerName === "mernmccall") return "Mern"
@@ -84,9 +85,7 @@ return (
      scores={scores}
      setScores={setScores}
    />
-   <footer className="mt-auto pt-8 text-center text-sm text-gray-500">
-  <p>Pocket Score © {new Date().getFullYear()} | a pk and dk app</p>
-</footer>
+   <UniversalFooter />
  </div>
 )
 }

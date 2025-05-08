@@ -11,6 +11,7 @@ import { JerryLogo } from './JerryLogo'
 import { MernLogo } from './MernLogo'
 import { DiceRoller } from './DiceRoller'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { UniversalFooter } from "@/components/common/UniversalFooter";
 
 interface ScoreSheetProps {
   players: string[]
@@ -115,7 +116,7 @@ export default function ScoreSheet({ players, onEndGame, isJerryGame, isMernGame
   }
 
   const winnerIndex = playerTotals.reduce((maxIndex, current, index, array) => 
-    current.grandTotal > array[maxIndex].grandTotal ? index : maxIndex, 0)
+    current.grandTotal > (array[maxIndex]?.grandTotal ?? -Infinity) ? index : maxIndex, 0)
 
   return (
     <div className={`container mx-auto px-2 sm:px-4 py-6 sm:py-12 min-h-screen ${
@@ -308,37 +309,35 @@ export default function ScoreSheet({ players, onEndGame, isJerryGame, isMernGame
           </table>
         </div>
       </div>
-      <div className="mt-6 sm:mt-10 text-center space-y-3 sm:space-y-0 sm:space-x-4">
-        <Button
-          onClick={resetGame}
-          className={`w-full sm:w-auto ${
-            isJerryGame 
-              ? 'bg-green-700 hover:bg-green-800' 
-              : isMernGame
-              ? 'bg-pink-500 hover:bg-pink-600'
-              : 'bg-green-600 hover:bg-green-700'
-          } text-white font-bold py-2 sm:py-3 px-6 sm:px-10 rounded-full transition duration-300 shadow-md hover:shadow-lg text-lg`}
-        >
-          New Game (Same Players)
-        </Button>
-        <Button
-          onClick={() => router.push('/')}
-          className={`w-full sm:w-auto ${
-            isJerryGame 
-              ? 'bg-red-700 hover:bg-red-800' 
-              : isMernGame
-              ? 'bg-red-500 hover:bg-red-600'
-              : 'bg-red-600 hover:bg-red-700'
-          } text-white font-bold py-2 sm:py-3 px-6 sm:px-10 rounded-full transition duration-300 shadow-md hover:shadow-lg text-lg`}
-        >
-          Reset Game (New Players)
-        </Button>
-      </div>
-      <div className="mt-4 sm:mt-6 pt-4 border-t border-gray-300">
-        <p className={`text-center ${isJerryGame ? 'text-gray-400' : isMernGame ? 'text-pink-600' : 'text-gray-500'} text-base`}>
-          Pocket Score © {new Date().getFullYear()} I a pk and dk app
-        </p>
-      </div>
+      {!finalTally ? (
+        <div className="mt-6 sm:mt-10 text-center space-y-4 sm:space-y-0 sm:space-x-4">
+          <Button
+            onClick={resetGame}
+            className={`w-full sm:w-auto ${
+              isJerryGame 
+                ? 'bg-green-700 hover:bg-green-800' 
+                : isMernGame
+                ? 'bg-pink-500 hover:bg-pink-600'
+                : 'bg-green-600 hover:bg-green-700'
+            } text-white font-bold py-2 sm:py-3 px-6 sm:px-10 rounded-full transition duration-300 shadow-md hover:shadow-lg text-lg`}
+          >
+            New Game (Same Players)
+          </Button>
+          <Button
+            onClick={() => router.push('/')}
+            className={`w-full sm:w-auto ${
+              isJerryGame 
+                ? 'bg-red-700 hover:bg-red-800' 
+                : isMernGame
+                ? 'bg-red-500 hover:bg-red-600'
+                : 'bg-red-600 hover:bg-red-700'
+            } text-white font-bold py-2 sm:py-3 px-6 sm:px-10 rounded-full transition duration-300 shadow-md hover:shadow-lg text-lg`}
+          >
+            Reset Game (New Players)
+          </Button>
+        </div>
+      ) : null}
+      <UniversalFooter />
       {showFinalTally && (
         <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50`}>
           <div className={`relative p-6 rounded-2xl shadow-xl max-w-xl w-full mx-4 ${
