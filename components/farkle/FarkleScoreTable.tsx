@@ -302,43 +302,105 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
 
         {/* Final Tally Modal */}
         <AnimatePresence>
-          {showFinalTallyModal && winningPlayerName && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-            >
+          {showFinalTallyModal && winningPlayerName && (() => {
+            const winnerIndex = players.indexOf(winningPlayerName);
+            const winnerScore = playerTotals[winnerIndex] ?? 0;
+            
+            let loserScore = 0;
+            let humanNameInMsg = "Human"; // General fallback
+            let computerNameInMsg = "Computer"; // General fallback
+
+            if (players.length === 2) {
+              const p1Name = players[0] ?? "Player 1"; // Provide fallback if undefined
+              const p2Name = players[1] ?? "Player 2"; // Provide fallback if undefined
+              const p1Score = playerTotals[0] ?? 0;
+              const p2Score = playerTotals[1] ?? 0;
+
+              // Determine who is human and who is computer for the message
+              if (p1Name === "Computer") {
+                computerNameInMsg = p1Name;
+                humanNameInMsg = p2Name;
+              } else if (p2Name === "Computer") {
+                computerNameInMsg = p2Name;
+                humanNameInMsg = p1Name;
+              } else {
+                // If neither is named "Computer", assume p1 is human, p2 is opponent for messaging
+                humanNameInMsg = p1Name;
+                // computerNameInMsg remains "Computer" or could be p2Name if we want generic opponent
+              }
+
+              if (winningPlayerName === p1Name) { // Player 1 is winner
+                loserScore = p2Score;
+              } else { // Player 2 is winner
+                loserScore = p1Score;
+              }
+            } else if (players.length === 1 && winnerIndex === 0) {
+              loserScore = 0; 
+              humanNameInMsg = winningPlayerName; // Winner is the only player
+              // computerNameInMsg remains default as there's no explicit computer opponent
+            } else {
+              loserScore = 0;
+              // Attempt to find a human and computer name if possible from a larger list
+              const foundHuman = players.find(p => p && p !== "Computer");
+              if (foundHuman) humanNameInMsg = foundHuman;
+              if (players.includes("Computer")) computerNameInMsg = "Computer";
+            }
+
+            const marginOfVictory = winnerScore - loserScore;
+            let finalMessage = "";
+
+            if (winningPlayerName === computerNameInMsg) { // Check against the identified computer name
+              finalMessage = `${computerNameInMsg} wins over ${humanNameInMsg} by ${marginOfVictory} points! Maybe try less silliness next time?`;
+            } else {
+              finalMessage = `Smarty pants ${winningPlayerName} wins over ${computerNameInMsg} by ${marginOfVictory} points! Well done!`;
+            }
+            
+            if (winnerScore === loserScore && players.length > 1) { 
+                 finalMessage = `It's a tie between ${players.join(' and ')} at ${winnerScore} points! This calls for a tie-breaker!`;
+            } else if (marginOfVictory < 0 && players.length > 1 ) { 
+                finalMessage = `${winningPlayerName} wins with ${winnerScore} points! (Margin may be miscalculated if scores are unusual)`;
+            } else if (players.length <=1 && winnerIndex === 0) {
+                finalMessage = `${winningPlayerName} finished with ${winnerScore} points!`;
+            }
+
+            return (
               <motion.div
-                initial={{ scale: 0.9, y: -20, opacity: 0 }}
-                animate={{ scale: 1, y: 0, opacity: 1 }}
-                exit={{ scale: 0.9, y: 20, opacity: 0 }}
-                className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full mx-auto text-center border-2 border-yellow-400"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
               >
-                <h2 className="text-3xl font-bold mb-4 text-blue-700">🎉 Game Over!</h2>
-                <p className="text-xl mb-6 text-gray-700">
-                  <span className="font-semibold text-yellow-500 text-2xl">{winningPlayerName}</span> wins with <span className="font-bold text-blue-600">{playerTotals[players.indexOf(winningPlayerName)] ?? 0}</span> points!
-                </p>
-                <div className="space-y-2 mb-6 max-h-60 overflow-y-auto px-2">
-                  {players.map((player, index) => (
-                    <div
-                      key={index}
-                      className={`flex justify-between items-center p-3 rounded-lg ${player === winningPlayerName ? 'bg-yellow-100 border border-yellow-300' : 'bg-gray-50 border border-gray-200'}`}
-                    >
-                      <span className={`text-lg font-medium ${player === winningPlayerName ? 'text-yellow-700' : 'text-gray-800'}`}>{player}</span>
-                      <span className={`font-mono font-bold text-lg ${player === winningPlayerName ? 'text-yellow-700' : 'text-gray-600'}`}>{playerTotals[index]}</span>
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  onClick={onCloseFinalTallyModal}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg shadow-md hover:shadow-lg transition-all duration-150"
+                <motion.div
+                  initial={{ scale: 0.9, y: -20, opacity: 0 }}
+                  animate={{ scale: 1, y: 0, opacity: 1 }}
+                  exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                  className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full mx-auto text-center border-2 border-yellow-400"
                 >
-                  Close
-                </Button>
+                  <h2 className="text-3xl font-bold mb-4 text-blue-700">🎉 Game Over!</h2>
+                  <p className="text-xl mb-6 text-gray-700 whitespace-pre-line">
+                    {finalMessage}
+                  </p>
+                  <div className="space-y-2 mb-6 max-h-60 overflow-y-auto px-2">
+                    {players.map((player, index) => (
+                      <div
+                        key={index}
+                        className={`flex justify-between items-center p-3 rounded-lg ${player === winningPlayerName ? 'bg-yellow-100 border border-yellow-300' : 'bg-gray-50 border border-gray-200'}`}
+                      >
+                        <span className={`text-lg font-medium ${player === winningPlayerName ? 'text-yellow-700' : 'text-gray-800'}`}>{player}</span>
+                        <span className={`font-mono font-bold text-lg ${player === winningPlayerName ? 'text-yellow-700' : 'text-gray-600'}`}>{playerTotals[index]}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    onClick={onCloseFinalTallyModal}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg shadow-md hover:shadow-lg transition-all duration-150"
+                  >
+                    Close
+                  </Button>
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )}
+            );
+          })()}
         </AnimatePresence>
 
         {/* Score Change Confirmation Modal */}
