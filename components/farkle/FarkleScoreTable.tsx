@@ -265,6 +265,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                                 value={currentTurnInput}
                                 onChange={(e) => onInputChange(e.target.value)}
                                 onKeyDown={handleKeyDown}
+                                onBlur={handleInputBlur}
                                 autoFocus
                                 className={`w-full h-full text-center text-lg font-bold ${hideSpinnerClass} bg-white text-blue-600 border-2 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-md p-0`}
                               />
