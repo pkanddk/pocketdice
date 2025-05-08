@@ -48,11 +48,20 @@ function FarklePvPPageContent() {
   const [finalRoundTriggeredBy, setFinalRoundTriggeredBy] = useState<number | null>(null);
   const [playersCompletedFinalRound, setPlayersCompletedFinalRound] = useState<boolean[]>([]);
 
+  // State for Tie-Breaker rounds
+  const [isTieBreakerActive, setIsTieBreakerActive] = useState(false);
+  const [tieBreakerPlayerIndices, setTieBreakerPlayerIndices] = useState<number[]>([]);
+  const [tieBreakerTurnScores, setTieBreakerTurnScores] = useState<{ [playerIndex: number]: number }>({});
+  const [tieBreakerRoundCompleted, setTieBreakerRoundCompleted] = useState<boolean[]>([]);
+
   // State for Farkle rule enforcement
   const [mustSelectDie, setMustSelectDie] = useState(false);
   const [canRollHotDice, setCanRollHotDice] = useState(false); // State for Hot Dice condition
   const [currentRollIndices, setCurrentRollIndices] = useState<number[]>([]); // Track indices of dice in current roll segment
   // TODO: Add state for currentRollScoringDice indices if needed for highlighting/selection
+
+  // State for Rules Modal
+  const [showRulesModal, setShowRulesModal] = useState(false);
 
   // Prepare props for FarkleScoreTable
   const playerTotals = playerStates.map(ps => ps.total);
@@ -69,6 +78,37 @@ function FarklePvPPageContent() {
 
     const currentCounts = dice.reduce((acc, num) => { acc[num] = (acc[num] || 0) + 1; return acc; }, {} as { [key: number]: number });
     const initialDiceCount = dice.length;
+
+    // Check for special 6-dice combinations first
+    if (initialDiceCount === 6) {
+      // Check 1: Straight (1-2-3-4-5-6)
+      // To check for a straight, we need to see if all dice from 1 to 6 are present exactly once.
+      const uniqueSortedDice = Array.from(new Set(dice)).sort((a, b) => a - b);
+      if (uniqueSortedDice.length === 6 && uniqueSortedDice.every((val, index) => val === index + 1)) {
+        return { score: 1500, hasScoringOption: true }; // Standard score for a 1-6 straight
+      }
+
+      // Check 2: Three Pairs
+      // e.g., counts are {2:2, 3:2, 5:2} -> 3 distinct numbers, each appearing twice.
+      const countsValuesForThreePairs = Object.values(currentCounts);
+      if (Object.keys(currentCounts).length === 3 && countsValuesForThreePairs.every(c => c === 2)) {
+        return { score: 1500, hasScoringOption: true }; // Standard score for three pairs
+      }
+
+      // Check 3: Two Triplets
+      // e.g., counts are {2:3, 4:3} -> 2 distinct numbers, each appearing thrice.
+      const countsValuesForTwoTriplets = Object.values(currentCounts);
+      if (Object.keys(currentCounts).length === 2 && countsValuesForTwoTriplets.every(c => c === 3)) {
+        // Score for two triplets can sometimes be a fixed value (e.g., 2500)
+        // or sum of individual triplets. Let's use a fixed 2500 for now.
+        // If individual triplet scores were variable (e.g. 1s = 1000, others = N*100), this would be more complex.
+        // Assuming standard 2500 for two triplets.
+        return { score: 2500, hasScoringOption: true };
+      }
+    }
+    
+    // If not a special 6-dice combo, or if fewer than 6 dice, proceed with existing N-of-a-kind and singles logic
+    // Score and hasScoringOption are already initialized to 0 and false respectively.
     let diceUsedInCombos = 0; // Keep track of dice used in higher-order combos
 
     // --- Check for highest N-of-a-kind first ---
@@ -76,12 +116,12 @@ function FarklePvPPageContent() {
     const diceNumbersPresent = Object.keys(currentCounts).map(Number).sort((a, b) => b - a); // Process higher numbers first, or sort as needed
 
     for (const num of diceNumbersPresent) {
-      let count = currentCounts[num]; // We know num exists in currentCounts here
+      let count = currentCounts[num]!; // We know num exists in currentCounts here
 
       if (count >= 6) {
         score += 3000;
         hasScoringOption = true;
-        currentCounts[num] -= 6;
+        currentCounts[num]! -= 6;
         diceUsedInCombos += 6;
         // If six of a kind, we might consider these dice fully accounted for that number.
         // For rules where 6 of a kind is the ONLY thing counted for those dice, we can `continue` or `break` if appropriate.
@@ -91,14 +131,14 @@ function FarklePvPPageContent() {
       if (count >= 5) {
         score += 2000;
         hasScoringOption = true;
-        currentCounts[num] -= 5;
+        currentCounts[num]! -= 5;
         diceUsedInCombos += 5;
         count -=5; // Update count for further checks on same number if any dice remain
       }
       if (count >= 4) {
         score += 1000;
         hasScoringOption = true;
-        currentCounts[num] -= 4;
+        currentCounts[num]! -= 4;
         diceUsedInCombos += 4;
         count -=4;
       }
@@ -109,7 +149,7 @@ function FarklePvPPageContent() {
         } else {
           score += num * 100;
         }
-        currentCounts[num] -= 3;
+        currentCounts[num]! -= 3;
         diceUsedInCombos += 3;
       }
     }
@@ -144,35 +184,187 @@ function FarklePvPPageContent() {
     } 
 
     let maxScore = -1;
-    let winnerIdx = -1;
+    const tiedWinnerIndices: number[] = [];
 
     playerStates.forEach((ps, index) => {
       if (ps.total > maxScore) {
         maxScore = ps.total;
-        winnerIdx = index;
-      } else if (ps.total === maxScore) {
-        console.log(`Tie score detected at ${maxScore}. Current logic favors player listed earlier or who achieved score first if order is maintained.`);
+        tiedWinnerIndices.length = 0; // Clear previous, found a new high score
+        tiedWinnerIndices.push(index);
+      } else if (ps.total === maxScore && maxScore !== -1) { // Check maxScore !== -1 to avoid issues if all scores are 0 or negative
+        tiedWinnerIndices.push(index);
       }
     });
 
-    if (winnerIdx !== -1) {
-      const potentialWinnerName = playerNames[winnerIdx];
-      if (potentialWinnerName) { // Check if the name string is actually defined and not empty
+    if (tiedWinnerIndices.length === 0 && playerStates.some(ps => ps.total > 0)) {
+      // This case should ideally not be reached if there are scores, but as a fallback.
+      console.error("Error determining winner, no one found with maxScore but scores exist.");
+      setGameOver(true);
+      setWinningPlayerName("Error: Winner determination failed");
+      return;
+    } else if (tiedWinnerIndices.length === 0) {
+      // All players have 0 or less, or no players with scores
+      console.log("Game Over! No winner could be determined based on scores (all zero or less, or no scorable players).");
+      setWinningPlayerName("N/A - No clear winner"); 
+      setGameOver(true);
+      return;
+    }
+
+    if (tiedWinnerIndices.length === 1) {
+      // Single winner, no tie
+      const winnerIdx = tiedWinnerIndices[0];
+      // Assuming winnerIdx from tiedWinnerIndices[0] is valid if length === 1 and array contains valid indices
+      const potentialWinnerName = (winnerIdx !== undefined && winnerIdx >= 0 && winnerIdx < playerNames.length) ? playerNames[winnerIdx] : undefined;
+      if (potentialWinnerName) {
         setWinningPlayerName(potentialWinnerName);
         console.log(`Game Over! Winner is ${potentialWinnerName} with ${maxScore} points!`);
       } else {
-        // This case should be rare if playerNames and playerStates are synced
-        console.log(`Game Over! Winner index ${winnerIdx} was valid, but no name found. Scores might be misaligned.`);
         setWinningPlayerName("Error: Winner name not found");
+        console.log(`Game Over! Winner index ${winnerIdx} was valid, but no name found (or index out of bounds).`);
       }
+      setGameOver(true);
     } else {
-      console.log("Game Over! No winner could be determined based on scores.");
-      setWinningPlayerName("N/A - No clear winner"); 
+      // Tie detected, initiate tie-breaker round
+      console.log(`Tie detected at ${maxScore} points between players: ${
+        tiedWinnerIndices.map(tempIdx => {
+            if (tempIdx !== undefined) {
+                const idx: number = tempIdx; // Explicitly typed
+                if (playerNames && idx >= 0 && idx < playerNames.length) {
+                    return playerNames[idx];
+                }
+                return `P${idx}`;
+            }
+            return 'InvalidPlayerIndex'; // Fallback if tempIdx was undefined
+        }).join(', ')
+    }. Initiating tie-breaker round.`);
+      setIsTieBreakerActive(true);
+      setTieBreakerPlayerIndices(tiedWinnerIndices);
+      
+      const initialTieScores: { [playerIndex: number]: number } = {};
+      tiedWinnerIndices.forEach(index => {
+        initialTieScores[index] = 0; // Initialize tie-breaker turn scores to 0
+      });
+      setTieBreakerTurnScores(initialTieScores);
+      
+      setTieBreakerRoundCompleted(Array(playerNames.length).fill(true).map((_, i) => !tiedWinnerIndices.includes(i)));
+      setFinalRoundTriggeredBy(null); 
+      setGameOver(false); 
+
+      setCurrentRollScore(0);
+      setCurrentTurnTotal(0);
+      setDiceStates(Array(6).fill('available'));
+      setDiceValues([1, 1, 1, 1, 1, 1]); 
+      setIsFarkle(false);
+      
+      if (tiedWinnerIndices.length > 0 && tiedWinnerIndices[0] !== undefined) {
+        setCurrentPlayerIndex(tiedWinnerIndices[0]);
+      } else {
+        // Fallback or error: should not happen if tiedWinnerIndices has entries
+        console.error("Cannot set current player for tie-breaker: no valid player index.");
+        // Potentially set to a default or handle error state
+        setCurrentPlayerIndex(0); // Or some other safe default
+      }
+      console.log("Transitioning to tie-breaker round...");
+      nextTurn(); 
     }
-    setGameOver(true);
   };
 
   const checkForGameEndOrAdvanceTurn = () => {
+    if (isTieBreakerActive) {
+      const allTiedPlayersCompleted = tieBreakerPlayerIndices.every(idx => tieBreakerRoundCompleted[idx]);
+      if (allTiedPlayersCompleted) {
+        console.log("All tied players have completed their tie-breaker turn.");
+        let maxTieScore = -1;
+        const ultimateWinnerIndices: number[] = [];
+        tieBreakerPlayerIndices.forEach(tempIdx => {
+          // Ensure tempIdx is treated as a number for keying into tieBreakerTurnScores
+          if (tempIdx !== undefined) {
+            const idx: number = tempIdx;
+            const playerScore = tieBreakerTurnScores[idx] || 0;
+            if (playerScore > maxTieScore) {
+              maxTieScore = playerScore;
+              ultimateWinnerIndices.length = 0;
+              ultimateWinnerIndices.push(idx);
+            } else if (playerScore === maxTieScore) {
+              ultimateWinnerIndices.push(idx);
+            }
+          }
+        });
+
+        if (ultimateWinnerIndices.length === 1) {
+          const tempWinnerIdx = ultimateWinnerIndices[0];
+          if (tempWinnerIdx !== undefined) {
+            const winnerIdx: number = tempWinnerIdx; // Explicitly typed
+
+            if (winnerIdx >= 0 && winnerIdx < playerNames.length && winnerIdx < playerStates.length) {
+                const winnerName = playerNames[winnerIdx];
+                const winnerState = playerStates[winnerIdx];
+
+                if (winnerName && winnerState) { // Check for truthiness of actual retrieved values
+                    setWinningPlayerName(winnerName);
+                    console.log(`Tie-breaker resolved! Winner is ${winnerName} with a tie-breaker score of ${maxTieScore}. Final total: ${winnerState.total}`);
+                } else {
+                    setWinningPlayerName("Error: Tie-breaker winner data inconsistent");
+                    console.error("Error resolving tie-breaker: Winner name or state is undefined for a valid index", winnerIdx);
+                }
+            } else {
+                setWinningPlayerName("Error: Tie-breaker winner data missing");
+                console.error("Error resolving tie-breaker: winner index invalid or data not found for index", winnerIdx);
+            }
+          } else {
+            // This case means ultimateWinnerIndices was empty or its first element was undefined (should not happen if length is 1)
+            setWinningPlayerName("Error: No tie-breaker winner index found (undefined)");
+            console.error("Error resolving tie-breaker: ultimateWinnerIndices[0] is undefined.");
+          }
+          setIsTieBreakerActive(false); 
+          setGameOver(true); 
+        } else if (ultimateWinnerIndices.length > 1) {
+          console.log(`Still tied in tie-breaker round with score ${maxTieScore} between ${ultimateWinnerIndices.map(tempIdx => {
+            if (tempIdx !== undefined) {
+                const idx: number = tempIdx;
+                if (playerNames && idx >= 0 && idx < playerNames.length) {
+                    return playerNames[idx];
+                }
+                return `P${idx}`;
+            }
+            return 'InvalidPlayerIndex';
+        }).join(', ')}. Another tie-breaker round!`);
+          setTieBreakerPlayerIndices(ultimateWinnerIndices);
+          const nextTieScores: { [playerIndex: number]: number } = {};
+          ultimateWinnerIndices.forEach(index => {
+            nextTieScores[index] = 0;
+          });
+          setTieBreakerTurnScores(nextTieScores);
+          setTieBreakerRoundCompleted(Array(playerNames.length).fill(true).map((_, i) => !ultimateWinnerIndices.includes(i)));
+          
+          if (ultimateWinnerIndices.length > 0 && ultimateWinnerIndices[0] !== undefined) {
+            setCurrentPlayerIndex(ultimateWinnerIndices[0]);
+          } else {
+            console.error("Cannot set current player for subsequent tie-breaker: no valid player index.");
+            setCurrentPlayerIndex(0); // Or some other safe default
+          }
+          setCurrentRollScore(0);
+          setCurrentTurnTotal(0);
+          setDiceStates(Array(6).fill('available'));
+          setDiceValues([1, 1, 1, 1, 1, 1]); 
+          setIsFarkle(false);
+          nextTurn(); 
+        } else { // Should not happen if there were tied players
+          console.error("Error resolving tie-breaker: no winner found from tie-breaker scores.");
+          setWinningPlayerName("Error in tie-breaker");
+          setIsTieBreakerActive(false);
+          setGameOver(true);
+        }
+        return; // Important to return after handling tie-breaker resolution
+      }
+      // If not all tied players completed, and game isn't over, advance to next tied player
+      if (!gameOver) { // Ensure game isn't flagged as over from another path
+        nextTurn(); 
+      }
+      return; // End here for tie-breaker active
+    }
+
+    // Original logic for final round (non-tie-breaker)
     if (finalRoundTriggeredBy !== null) {
       // Final round is active, check if all players have completed their turn
       const allTurnsCompleted = playersCompletedFinalRound.every(completed => completed);
@@ -189,16 +381,65 @@ function FarklePvPPageContent() {
   };
 
   const nextTurn = () => {
-    if (gameOver) return; 
+    if (gameOver && !isTieBreakerActive) return; // Allow nextTurn if game over but tie breaker is starting/active
+    if (gameOver && isTieBreakerActive) { // If tie-breaker itself has led to gameOver, truly stop.
+        // This condition might be hit if checkForGameEndOrAdvanceTurn sets gameOver after a tie-breaker resolution.
+        console.log("[nextTurn] Game is definitively over, even post-tie-breaker. No next turn.");
+        return;
+    }
 
-    setCurrentRollIndices([]); // Clear for new turn
-    setCurrentPlayerIndex(prevIndex => (prevIndex + 1) % playerNames.length);
+    // Reset common turn states
+    setCurrentRollIndices([]); 
     setCurrentRollScore(0);
     setCurrentTurnTotal(0);
     setDiceStates(Array(6).fill('available'));
     setDiceValues([1, 1, 1, 1, 1, 1]); 
     setIsFarkle(false);
-    console.log(`Advancing to player ${ (currentPlayerIndex + 1) % playerNames.length }`); // This log might be off by one if called after setCurrentPlayerIndex completes
+
+    if (isTieBreakerActive) {
+      if (tieBreakerPlayerIndices.length === 0) {
+        console.error("[nextTurn] Tie-breaker active, but no tied players listed. Aborting nextTurn.");
+        setGameOver(true);
+        setIsTieBreakerActive(false);
+        setWinningPlayerName("Error in tie-breaker player progression");
+        return;
+      }
+
+      const currentPrimaryIndex = currentPlayerIndex; 
+      const currentIndexInTieArray = tieBreakerPlayerIndices.indexOf(currentPrimaryIndex);
+      
+      let potentialNextPlayerActualIndex: number | undefined;
+
+      if (currentIndexInTieArray === -1 || tieBreakerPlayerIndices.length === 0) {
+        // Current player not in tie list OR tie list is empty (should be caught by above check but defensive)
+        // Start with the first player in the tieBreakerPlayerIndices list.
+        potentialNextPlayerActualIndex = tieBreakerPlayerIndices[0];
+      } else {
+        // Find next player in the tie list
+        const nextIndexInTieArray = (currentIndexInTieArray + 1) % tieBreakerPlayerIndices.length;
+        potentialNextPlayerActualIndex = tieBreakerPlayerIndices[nextIndexInTieArray];
+      }
+      
+      if (potentialNextPlayerActualIndex !== undefined) {
+        const nextPlayerActualIndex: number = potentialNextPlayerActualIndex;
+        setCurrentPlayerIndex(nextPlayerActualIndex);
+        console.log(`[nextTurn] Tie-breaker: Advancing to player: ${playerNames[nextPlayerActualIndex] || `P${nextPlayerActualIndex}`}`);
+      } else {
+        console.error("[nextTurn] Tie-breaker: Could not determine next player. Aborting tie-breaker.");
+        setGameOver(true);
+        setIsTieBreakerActive(false);
+        setWinningPlayerName("Error in tie-breaker player determination");
+        return;
+      }
+
+    } else {
+      // Standard game flow: cycle through all players
+      setCurrentPlayerIndex(prevIndex => {
+        const nextPlayer = (prevIndex + 1) % playerNames.length;
+        console.log(`[nextTurn] Standard: Advancing to player ${playerNames[nextPlayer] || `P${nextPlayer}`}`);
+        return nextPlayer;
+      });
+    }
   };
 
   const handleRollDice = () => {
@@ -415,8 +656,41 @@ function FarklePvPPageContent() {
     const scoreToBank = currentTurnTotal; 
     setCurrentRollIndices([]); // Clear when banking
 
-    if (gameOver) return; // Prevent banking if game is already over
+    if (gameOver && !isTieBreakerActive) return; // Allow banking if game over but tie breaker active, e.g. final bank of tie-break round
+    // If truly game over (e.g. already resolved), prevent further banking.
+    if (gameOver && isTieBreakerActive && winningPlayerName) {
+        console.log("[handleBankScore] Game is definitively over (winner decided). No more banking.");
+        return;
+    }
 
+    if (isTieBreakerActive) {
+      console.log(`[handleBankScore] Tie-breaker: Player ${playerNames[currentPlayerIndex] || `P${currentPlayerIndex}`} banking tie-breaker score: ${scoreToBank}`);
+      setTieBreakerTurnScores(prevScores => ({
+        ...prevScores,
+        [currentPlayerIndex]: scoreToBank
+      }));
+
+      setTieBreakerRoundCompleted(prev => {
+        const newCompletion = [...prev];
+        // Ensure the array is long enough before assignment
+        while (newCompletion.length <= currentPlayerIndex) {
+            newCompletion.push(false); // Or some other default if needed, but should be pre-initialized
+        }
+        newCompletion[currentPlayerIndex] = true;
+        console.log(`[handleBankScore] Tie-breaker completion status:`, newCompletion);
+        return newCompletion;
+      });
+
+      // Reset turn-specific states before advancing or concluding tie-breaker
+      setCurrentTurnTotal(0);
+      setCurrentRollScore(0);
+      // Dice states will be reset by nextTurn or if game ends
+
+      checkForGameEndOrAdvanceTurn(); // This will check if all tied players are done and resolve/continue tie-breaker
+      return; // End execution for tie-breaker banking
+    }
+
+    // --- Original Banking Logic (if not in tie-breaker) ---
     if (scoreToBank <= 0) {
          console.log("Cannot bank score <= 0.");
          return;
@@ -547,23 +821,23 @@ function FarklePvPPageContent() {
     setIsRolling(false);
     setCurrentRollScore(0);
     setCurrentTurnTotal(0);
-    // Re-initialize player states, keeping names but resetting scores and board status
     setPlayerStates(playerNames.map(() => initializePlayerState()));
     setIsFarkle(false);
-    // gameStarted remains true
     setGameOver(false);
     setWinningPlayerName(null);
     setFinalRoundTriggeredBy(null);
-    setPlayersCompletedFinalRound(playerNames.map(() => false)); // Reset based on current players
+    setPlayersCompletedFinalRound(playerNames.map(() => false)); 
     setMustSelectDie(false);
+    // Reset Tie-Breaker States
+    setIsTieBreakerActive(false);
+    setTieBreakerPlayerIndices([]);
+    setTieBreakerTurnScores({});
+    setTieBreakerRoundCompleted([]);
     console.log("Game reset with same players.");
   };
   
   const handleResetGameToNewPlayers = () => {
-    // This function will now always navigate to the root/setup page
-    // to allow for new player entry.
     console.log("Resetting game for new players. Navigating to setup...");
-    // Clearing all state related to current game before redirect
     setPlayerNames([]);
     setCurrentPlayerIndex(0);
     setDiceValues([1, 1, 1, 1, 1, 1]);
@@ -579,7 +853,12 @@ function FarklePvPPageContent() {
     setFinalRoundTriggeredBy(null);
     setPlayersCompletedFinalRound([]);
     setMustSelectDie(false);
-    router.push('/'); // Navigate to the main menu / setup page
+    // Reset Tie-Breaker States
+    setIsTieBreakerActive(false);
+    setTieBreakerPlayerIndices([]);
+    setTieBreakerTurnScores({});
+    setTieBreakerRoundCompleted([]);
+    router.push('/'); 
     console.log("Game reset, redirecting for new players.");
   };
 
@@ -638,6 +917,11 @@ function FarklePvPPageContent() {
 
   // Calculate the index of the turn the current player is on (0-based)
   const actualCurrentTurnIndex = playerStates[currentPlayerIndex]?.scores?.length || 0;
+
+  // --- Handler for Rules Modal ---
+  const toggleShowRulesModal = () => {
+    setShowRulesModal(prev => !prev);
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4 font-sans">
@@ -703,8 +987,8 @@ function FarklePvPPageContent() {
             onCloseFinalTallyModal={() => { 
               console.log("Final tally modal closed by user.");
             }} 
-            showRulesModal={false} 
-            onToggleRulesModal={() => console.log("Toggle rules modal")}
+            showRulesModal={showRulesModal} 
+            onToggleRulesModal={toggleShowRulesModal}
             onEditBankedScore={() => {}} 
             showConfirmModal={false} 
             onConfirmScoreChange={() => {}} 
@@ -719,16 +1003,19 @@ function FarklePvPPageContent() {
         </div>
       )}
 
-      <div className="mt-8 flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+      {/* Container for reset buttons - constraining width and centering */}
+      <div className="mt-8 w-full max-w-md mx-auto flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-4 sm:px-0">
         <Button 
           onClick={handleResetGameSamePlayers} 
-          className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out w-full sm:w-auto"
+          // Ensuring full width on mobile, auto on larger screens within the flex row
+          className="w-full sm:flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out"
         >
           New Game, Same Players
         </Button>
         <Button 
           onClick={handleResetGameToNewPlayers} 
-          className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out w-full sm:w-auto"
+          // Ensuring full width on mobile, auto on larger screens within the flex row
+          className="w-full sm:flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out"
         >
           New Game, New Players
         </Button>

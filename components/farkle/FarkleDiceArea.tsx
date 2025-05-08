@@ -78,18 +78,23 @@ export const FarkleDiceArea: React.FC<FarkleDiceAreaProps> = ({
 
       {/* Content Area (dice + buttons) */}
       <div className="p-4 flex flex-col items-center">
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-4 py-4 w-full justify-items-center">
-          {displayDice.map((value, index) => (
-            <Dice
-              key={index}
-              value={value}
-              isHeld={displayStates[index] === 'held'} 
-              isRolling={isRolling && displayStates[index] !== 'held'} // Only animate non-held dice
-              onClick={() => onToggleHold(index)}
-              isJerryGame={false} 
-              isMernGame={false} 
-            />
-          ))}
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3 md:gap-4 py-4 w-full justify-items-center">
+          {displayDice.map((value, index) => {
+            // The dieSizeClasses variable and passing it to className is removed.
+            // Instead, we pass the sizeVariant prop to the Dice component.
+            return (
+              <Dice
+                key={index}
+                value={value}
+                isHeld={displayStates[index] === 'held'} 
+                isRolling={isRolling && displayStates[index] !== 'held'} // Only animate non-held dice
+                onClick={() => onToggleHold(index)}
+                isJerryGame={false} 
+                isMernGame={false}
+                sizeVariant="farkle" // Pass the "farkle" size variant
+              />
+            );
+          })}
         </div>
         {/* --- Moved Buttons --- */}
         <div className="flex space-x-3 mt-4 mb-2"> { /* Added margin */ }

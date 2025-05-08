@@ -9,14 +9,22 @@ interface DiceProps {
   onClick: () => void
   isJerryGame: boolean
   isMernGame: boolean
+  sizeVariant?: 'default' | 'farkle'
 }
 
-export const Dice: React.FC<DiceProps> = ({ value, isHeld, isRolling, onClick, isJerryGame, isMernGame }) => {
-  const getDiceColor = (isHeld: boolean) => {
-    if (isHeld) {
+export const Dice: React.FC<DiceProps> = ({ value, isHeld, isRolling, onClick, isJerryGame, isMernGame, sizeVariant = 'default' }) => {
+  const getDiceColor = (isHeldParam: boolean) => {
+    if (isHeldParam) {
       return isJerryGame ? 'text-red-400' : isMernGame ? 'text-red-500' : 'text-red-600'
     }
     return isJerryGame ? 'text-blue-400' : isMernGame ? 'text-pink-600' : 'text-blue-600'
+  }
+
+  let diceIconSizeClasses = '';
+  if (sizeVariant === 'farkle') {
+    diceIconSizeClasses = 'w-14 h-14 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16';
+  } else {
+    diceIconSizeClasses = 'w-16 h-16 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24';
   }
 
   return (
@@ -39,7 +47,7 @@ export const Dice: React.FC<DiceProps> = ({ value, isHeld, isRolling, onClick, i
     >
       <DiceIcon 
         number={value as 1 | 2 | 3 | 4 | 5 | 6} 
-        className={`w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 lg:w-24 lg:h-24 ${getDiceColor(isHeld)}`}
+        className={`${diceIconSizeClasses} ${getDiceColor(isHeld)}`}
       />
     </motion.div>
   )

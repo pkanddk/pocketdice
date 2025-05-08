@@ -185,28 +185,37 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
           {/* Main Sticky Header for Player Names and Rules */}
           <thead className={`sticky z-20 top-0`}> {/* Simplified top calculation as caption is removed */}
             <tr className="bg-blue-600 text-white">
-              <th className="p-0 text-left sticky left-0 z-20 bg-blue-600 w-[130px] sm:w-[180px] border-r border-blue-500 rounded-tl-lg"> {/* Added rounded-tl-lg */}
+              <th className="p-0 text-left sticky left-0 z-20 bg-blue-600 w-[110px] sm:w-[180px] border-r border-blue-500 rounded-tl-lg">
                 <Button
                   onClick={onToggleRulesModal}
                   variant="ghost"
-                  className={`w-full h-full p-3 text-left font-semibold text-base sm:text-lg flex justify-between items-center text-white hover:bg-red-500 focus:bg-red-500 transition-colors duration-200 rounded-none ${
+                  className={`w-full h-full p-2 sm:p-3 text-left font-semibold text-sm sm:text-base flex justify-between items-center text-white hover:bg-red-500 focus:bg-red-500 transition-colors duration-200 rounded-none ${
                     showRulesModal ? 'bg-red-600' : 'bg-blue-600'
                   }`}
                 >
                   Game Rules
-                  {showRulesModal ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  {showRulesModal ? <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5" /> : <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5" />}
                 </Button>
               </th>
               {players.map((player, index) => (
-                <th key={index} className={`p-3 text-center w-[90px] sm:w-[110px] border-r border-blue-500 ${
+                <th key={index} 
+                    className={`p-2 sm:p-3 text-center w-[75px] sm:w-[100px] border-r border-blue-500 ${
                   index === players.length - 1 ? 'border-r-0 rounded-tr-lg' : ''
                 } ${
                   index === currentPlayerIndex && !gameOver ? 'bg-red-600' : 'bg-blue-600'
                 }`}>
-                  {player}
-                  {!isPlayerOnBoard[index] && !gameOver && (
-                    <span className="block text-xs opacity-70">({minimumToGetOnBoard} to board)</span>
-                  )}
+                  <div className="flex flex-col items-center justify-center">
+                    <span className="font-semibold text-sm sm:text-base break-words">{player}</span>
+                    {isPlayerOnBoard[index] ? (
+                      <span className="block text-[10px] sm:text-xs opacity-90 font-normal">
+                        Total: {playerTotals[index]}
+                      </span>
+                    ) : !gameOver ? (
+                      <span className="block text-[10px] sm:text-xs opacity-70 font-normal">
+                        ({minimumToGetOnBoard} to board)
+                      </span>
+                    ) : null} {/* Don't show 'to board' if game is over and player never got on board */}
+                  </div>
                 </th>
               ))}
             </tr>
