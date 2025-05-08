@@ -244,8 +244,8 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                       <td 
                         key={`score-${turnIndex}-${playerIdx}`} 
                         // Adjust padding for body cells
-                        className={`p-2 text-center border-r border-gray-100 ${playerIdx === players.length -1 ? 'border-r-0' : ''} relative ${ 
-                          isActiveInputCell && scoreEntryMode === 'auto' ? 'bg-yellow-100' : // Special bg for auto mode active cell container
+                        className={`p-2 text-center border-r border-gray-100 ${playerIdx === players.length -1 ? 'border-r-0' : ''} relative ${
+                          isActiveInputCell && scoreEntryMode === 'auto' ? 'bg-white' : // Changed from bg-yellow-100
                           isCurrentPlayerCell && !gameOver ? 'bg-red-50' : '' // Background for non-active cells in current player column
                         }`}
                         onClick={() => {
@@ -266,7 +266,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                                 onChange={(e) => onInputChange(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 autoFocus
-                                className={`w-full h-full text-center text-lg font-bold ${hideSpinnerClass} bg-yellow-100 text-blue-600 border-2 border-yellow-300 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 rounded-md p-0`}
+                                className={`w-full h-full text-center text-lg font-bold ${hideSpinnerClass} bg-white text-blue-600 border-2 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-md p-0`}
                               />
                             ) : (
                               // Auto mode (for PvP game)

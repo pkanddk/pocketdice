@@ -584,6 +584,12 @@ function FarklePvPPageContent() {
       console.log("[ToggleHold] Cannot interact during roll.");
       return;
     }
+    // If no dice have been rolled in the current segment (e.g., start of turn, or after banking before new roll)
+    // then don't allow holding/unholding.
+    if (currentRollIndices.length === 0) {
+        console.log("[ToggleHold] Cannot hold dice before rolling in the current turn segment.");
+        return;
+    }
 
     // Tentatively toggle the state of the clicked die
     const newTentativeDiceStates = [...diceStates];
@@ -914,7 +920,10 @@ function FarklePvPPageContent() {
   const currentYear = new Date().getFullYear(); // Get current year
 
   // Calculate current round for header display
-  const currentRound = (playerStates[0]?.scores?.length || 0) + 1;
+  // const currentRound = (playerStates[0]?.scores?.length || 0) + 1;
+  const headerDisplayTurn = playerStates.length > 0 
+    ? Math.min(...playerStates.map(ps => ps.scores.length)) + 1 
+    : 1;
 
   // Calculate the index of the turn the current player is on (0-based)
   const actualCurrentTurnIndex = playerStates[currentPlayerIndex]?.scores?.length || 0;
@@ -938,7 +947,7 @@ function FarklePvPPageContent() {
         <p className="text-xl text-gray-600 mt-1">Game On!</p>
         {playerNames.length > 0 && (
           <p className="text-md text-gray-500 mt-1">
-            {playerNames.length} Player{playerNames.length > 1 ? 's' : ''} | Round {currentRound}
+            {playerNames.length} Player{playerNames.length > 1 ? 's' : ''} | Turn {headerDisplayTurn}
           </p>
         )}
       </header>

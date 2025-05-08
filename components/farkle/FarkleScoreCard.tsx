@@ -19,6 +19,7 @@ interface PlayerState {
 
 interface FarkleScoreCardProps {
   players: string[];
+  onTurnChange?: (turn: number) => void;
 }
 
 // Helper to initialize player state
@@ -28,7 +29,7 @@ const initializePlayerState = (): PlayerState => ({
   isOnBoard: false,
 });
 
-export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players }) => {
+export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players, onTurnChange }) => {
   const router = useRouter();
 
   const [playerStates, setPlayerStates] = useState<PlayerState[]>(players.map(() => initializePlayerState()));
@@ -64,6 +65,7 @@ export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players }) => 
       setPlayerStates(players.map(() => initializePlayerState()));
       setCurrentPlayerIndex(0);
       setCurrentGlobalTurn(1);
+      if (onTurnChange) onTurnChange(1);
       setGameOver(false);
       if (players[0]) { // Ensure players[0] exists before accessing
         setGameMessage(`${players[0]}'s turn to roll!`);
@@ -75,14 +77,17 @@ export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players }) => 
       setLastPlayerToBank(null); // Reset on game reset
       setDisplayedTurnCount(INITIAL_TURNS_TO_SHOW); // Reset displayed turns on game reset
     }
-  }, [players]); // Depend only on players array
+  }, [players, onTurnChange]); // Depend only on players array
 
   // useEffect to dynamically add more turns to display
   useEffect(() => {
     if (!gameOver && currentGlobalTurn >= displayedTurnCount - 2) {
       setDisplayedTurnCount(prev => prev + 5);
     }
-  }, [currentGlobalTurn, displayedTurnCount, gameOver]);
+    if (onTurnChange) {
+      onTurnChange(currentGlobalTurn);
+    }
+  }, [currentGlobalTurn, displayedTurnCount, gameOver, onTurnChange]);
 
   const handleBankScore = useCallback(() => {
     // Prevent banking if the game is TRULY over (after final round completion)
@@ -277,7 +282,10 @@ export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players }) => 
         setCurrentPlayerIndex(nextPlayerAdvanceTo);
         if (nextPlayerAdvanceTo === 0) { 
             console.log(`[FarkleScoreCard] Advancing Global Turn from ${currentGlobalTurn} to ${currentGlobalTurn + 1}. Current player was ${currentPlayerName} (idx ${currentPlayerIndex}). Next player is idx 0.`);
-            setCurrentGlobalTurn(prev => prev + 1);
+            setCurrentGlobalTurn(prev => {
+              const newTurn = prev + 1;
+              return newTurn;
+            });
         }
     }
     
@@ -300,6 +308,7 @@ export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players }) => 
     setPlayerStates(players.map(() => initializePlayerState()));
     setCurrentPlayerIndex(0);
     setCurrentGlobalTurn(1);
+    if (onTurnChange) onTurnChange(1);
     setCurrentTurnInput('');
     setGameMessage(players[0] ? `${players[0]}'s turn to roll!` : null);
     setGameOver(false);
@@ -309,7 +318,7 @@ export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players }) => 
     setFinalRoundPlayerIndex(null); // Reset final round marker
     setLastPlayerToBank(null); // Reset on game reset
     setDisplayedTurnCount(INITIAL_TURNS_TO_SHOW); // Reset displayed turns on game reset
-  }, [router, players]);
+  }, [router, players, onTurnChange]);
 
   const toggleShowRulesModal = useCallback(() => {
     setShowRulesModal(prev => !prev);

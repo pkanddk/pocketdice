@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Logo } from '@/components/Logo'; // Assuming you have a generic Logo component
 import { FarkleScoreCard } from '@/components/farkle/FarkleScoreCard';
@@ -9,6 +9,7 @@ function FarkleScoreCardPageContent() {
   const searchParams = useSearchParams();
   const [playerNames, setPlayerNames] = useState<string[]>([]);
   const [gameStarted, setGameStarted] = useState(false);
+  const [displayTurn, setDisplayTurn] = useState<number>(1);
   // Add any other page-specific state if needed, e.g., themes for Farkle
 
   useEffect(() => {
@@ -36,6 +37,10 @@ function FarkleScoreCardPageContent() {
     }
   }, [playerNames, gameStarted]);
 
+  const handleTurnChange = useCallback((turn: number) => {
+    setDisplayTurn(turn);
+  }, [setDisplayTurn]);
+
   if (!gameStarted || playerNames.length === 0) {
     // You might want a more sophisticated loading state or error handling
     return <div className="text-center py-10">Loading Players or Player Data Missing...</div>;
@@ -51,10 +56,10 @@ function FarkleScoreCardPageContent() {
             <Logo /> { /* Or a specific Farkle Logo if you create one */ }
         </div>
         <p className="text-center mt-1 text-lg">
-          F#*KLE Score Card | {playerNames.length} Player{playerNames.length > 1 ? 's' : ''}
+          F#*KLE Score Card | Turn {displayTurn}
         </p>
       </div>
-      <FarkleScoreCard players={playerNames} />
+      <FarkleScoreCard players={playerNames} onTurnChange={handleTurnChange} />
     </div>
   );
 }
