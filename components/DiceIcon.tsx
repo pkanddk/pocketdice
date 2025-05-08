@@ -15,6 +15,6 @@ export function DiceIcon({ number, className = "" }: DiceIconProps) {
     6: Dice6
   }[number]
 
-  return <DiceComponent className={`w-6 h-6 ${className}`} />
+  return <DiceComponent className={`${className}`} />
 }
 

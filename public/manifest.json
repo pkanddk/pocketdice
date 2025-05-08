@@ -1,6 +1,6 @@
 {
   "name": "Pocket Score",
-  "short_name": "PocketScore",
+  "short_name": "Pocket Score",
   "description": "Play fun board and dice games like Backgammon and Yahtzee!",
   "start_url": "/",
   "display": "standalone",
