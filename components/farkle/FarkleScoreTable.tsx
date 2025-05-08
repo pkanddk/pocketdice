@@ -105,13 +105,6 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
   }, [showFinalTallyModal, winningPlayerName]);
 
   useEffect(() => {
-    // Focus main input cell if it's active and modal is not shown
-    if (!gameOver && inputRef.current && !showConfirmModal && document.activeElement !== inputRef.current) {
-      inputRef.current.focus({ preventScroll: true });
-    }
-  }, [currentPlayerIndex, actualCurrentTurnIndex, gameOver, showConfirmModal]); // Dependencies simplified
-
-  useEffect(() => {
     // Focus input inside confirm modal when it appears
     if (showConfirmModal && confirmInputRef.current) {
       confirmInputRef.current.focus();
@@ -221,41 +214,6 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
             {/* Remove fixed height h-16 from tr */}
             {Array.from({ length: displayedTurnCount }).map((_, turnIndex) => {
               const turnNumber = turnIndex + 1;
-              let SingleDieComponent = null;
-              let Die1OfSet = null;
-              let Die2OfSet = null;
-              let Die3OfSet = null; // For third die
-              let showFourSixes = false; // For turns 19+
-
-              if (turnNumber <= 6) { // Turns 1-6
-                if (turnNumber === 1) SingleDieComponent = Dice1;
-                else if (turnNumber === 2) SingleDieComponent = Dice2;
-                else if (turnNumber === 3) SingleDieComponent = Dice3;
-                else if (turnNumber === 4) SingleDieComponent = Dice4;
-                else if (turnNumber === 5) SingleDieComponent = Dice5;
-                else if (turnNumber === 6) SingleDieComponent = Dice6;
-              } else if (turnNumber <= 12) { // Turns 7-12 (6 + X)
-                Die1OfSet = Dice6;
-                const val2 = turnNumber - 6;
-                if (val2 === 1) Die2OfSet = Dice1;
-                else if (val2 === 2) Die2OfSet = Dice2;
-                else if (val2 === 3) Die2OfSet = Dice3;
-                else if (val2 === 4) Die2OfSet = Dice4;
-                else if (val2 === 5) Die2OfSet = Dice5;
-                else if (val2 === 6) Die2OfSet = Dice6;
-              } else if (turnNumber <= 18) { // Turns 13-18 (6 + 6 + X)
-                Die1OfSet = Dice6;
-                Die2OfSet = Dice6;
-                const val3 = turnNumber - 12;
-                if (val3 === 1) Die3OfSet = Dice1;
-                else if (val3 === 2) Die3OfSet = Dice2;
-                else if (val3 === 3) Die3OfSet = Dice3;
-                else if (val3 === 4) Die3OfSet = Dice4;
-                else if (val3 === 5) Die3OfSet = Dice5;
-                else if (val3 === 6) Die3OfSet = Dice6;
-              } else { // Turns 19+
-                showFourSixes = true;
-              }
 
               return (
                 <tr key={`turn-${turnIndex}`} className={`${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} border-b border-gray-100`}>
@@ -263,22 +221,8 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                   <td className={`p-2 text-left sticky left-0 z-[5] font-semibold border-r border-gray-100 ${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} flex justify-between items-center`}>
                     <span>Turn {turnNumber}</span>
                     <div className="flex items-center">
-                      {SingleDieComponent ? (
-                        <SingleDieComponent className="w-5 h-5 text-blue-600 ml-2" />
-                      ) : showFourSixes ? (
-                        <>
-                          <Dice6 className="w-5 h-5 text-blue-600 ml-1" />
-                          <Dice6 className="w-5 h-5 text-blue-600 ml-1" />
-                          <Dice6 className="w-5 h-5 text-blue-600 ml-1" />
-                          <Dice6 className="w-5 h-5 text-blue-600 ml-1" />
-                        </>
-                      ) : Die1OfSet ? ( // Covers 2-dice and 3-dice scenarios
-                        <>
-                          <Die1OfSet className="w-5 h-5 text-blue-600 ml-1" />
-                          {Die2OfSet && <Die2OfSet className="w-5 h-5 text-blue-600 ml-1" />}
-                          {Die3OfSet && <Die3OfSet className="w-5 h-5 text-blue-600 ml-1" />}
-                        </>
-                      ) : null}
+                      {/* MODIFIED: Always show Dice1 */}
+                      <Dice1 className="w-5 h-5 text-blue-600 ml-2" />
                     </div>
                   </td>
                   {players.map((_, playerIdx) => {
