@@ -171,8 +171,8 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Remove table-fixed and min-w-* from table */}
-        <table className="w-full border-collapse rounded-lg">
+        {/* Restore table-fixed for consistent column widths */}
+        <table className="w-full border-collapse table-fixed rounded-lg">
           {/* Main Sticky Header for Player Names and Rules */}
           <thead className={`sticky z-20 top-0`}> 
             <tr className="bg-blue-600 text-white">
@@ -313,24 +313,23 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                             scoreEntryMode === 'manual' ? (
                               <Input
                                 ref={inputRef}
-                                type="text"
+                                type="tel"
                                 inputMode="numeric"
                                 pattern="\d*"
-                                value={currentTurnInput} // Use currentTurnInput for manual mode
-                                onChange={(e) => onInputChange(e.target.value)} // Use onInputChange for manual mode
-                                onKeyDown={handleKeyDown} // Use handleKeyDown for manual mode
-                                // onBlur={handleInputBlur} // Re-evaluate if onBlur is needed for manual input, might auto-bank too aggressively
+                                value={currentTurnInput}
+                                onChange={(e) => onInputChange(e.target.value)}
+                                onKeyDown={handleKeyDown}
                                 autoFocus
                                 className={`w-full h-full text-center text-lg font-bold ${hideSpinnerClass} bg-yellow-100 text-blue-600 border-2 border-yellow-300 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 rounded-md p-0`}
                               />
                             ) : (
-                              // Auto mode (for PvP game) - Apply padding within the span to control height
+                              // Auto mode (for PvP game)
                               <span className={`block w-full h-full flex items-center justify-center text-lg font-bold py-1 ${isFarkleTurn ? 'text-red-500' : 'text-blue-600'} rounded-md`}>
                                 {isFarkleTurn ? 'F#*KLED!' : (liveTurnScore > 0 ? liveTurnScore : '-')}
                               </span>
                             )
                           ) : (
-                            // Non-active cell: display banked score or Farkle message - Apply padding here too
+                            // Non-active cell
                             <span className={`block w-full h-full flex items-center justify-center text-lg py-1 ${canEditCell ? 'cursor-pointer hover:bg-yellow-100 rounded-md transition-colors duration-150' : ''}`}>
                                {cellScoreValue === 0 ? <span className="text-red-500 font-bold">F#*KLED!</span> : (cellScoreValue !== null && cellScoreValue !== undefined ? cellScoreValue : '' )}
                             </span>
@@ -343,7 +342,6 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
               );
             })}
             {/* Total Scores Row */}
-            {/* Adjust padding for total row */}
             <tr className="bg-blue-700 text-white font-bold text-lg sticky bottom-0 z-20">
               <td className="p-2 sm:p-3 text-left sticky left-0 z-[25] bg-blue-700 border-r border-blue-500 rounded-bl-lg">TOTAL</td>
               {players.map((_, playerIdx) => (
@@ -429,7 +427,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                 <div className="flex flex-col space-y-4">
                   <Input
                     ref={confirmInputRef} // Assign ref to modal input
-                    type="text"
+                    type="text" // Keeping type=text here, maybe change later if needed for this specific modal
                     inputMode="numeric"
                     pattern="\d*"
                     value={editModalValue}
@@ -479,7 +477,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center z-[70] p-4 pt-20"
-            // No onClick on backdrop to force using the button for this important notice
+            // No onClick on backdrop
           >
             <motion.div
               initial={{ scale: 0.9, y: -20, opacity: 0 }}
@@ -505,4 +503,4 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
       </div>
     </>
   );
-}; 
+};

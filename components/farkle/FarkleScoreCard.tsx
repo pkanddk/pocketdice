@@ -510,15 +510,19 @@ export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players }) => 
           onDismissFinalRoundInitiationNotice={handleDismissFinalRoundInitiationNotice}
         />
       </div>
-      <div className="mt-auto pt-3 pb-0 text-center space-y-3 sm:space-y-0 sm:space-x-4">
-        <Button onClick={() => handleResetGame(false)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full text-lg">
+      <div className="mt-8 w-full max-w-md mx-auto flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-4 sm:px-0">
+        <Button 
+          onClick={() => handleResetGame(false)} 
+          className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full text-lg">
           New Game (Same Players)
         </Button>
-        <Button onClick={() => handleResetGame(true)} className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full text-lg">
+        <Button 
+          onClick={() => handleResetGame(true)} 
+          className="w-full sm:flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full text-lg">
           Reset Game (New Players)
         </Button>
       </div>
-      <footer className="mt-auto pt-4 text-center text-sm text-gray-500"> 
+      <footer className="mt-12 pt-4 text-center text-sm text-gray-500">
         <p>Pocket Score © {new Date().getFullYear()} | a pk and dk app</p>
       </footer>
     </div>
