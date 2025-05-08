@@ -171,27 +171,18 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
           )}
         </AnimatePresence>
 
-        <table className="w-full border-collapse table-fixed min-w-[500px] sm:min-w-[600px] rounded-lg">
-          {/* Game Message as <caption> - REMOVED
-          {gameMessage && (
-            <caption className={`sticky top-0 z-30 p-3 text-center text-sm font-semibold font-sans border-b ${ 
-              gameMessage.includes("F#*KLED") 
-                ? "bg-red-50 text-red-700 border-red-200 font-bold"
-                : "bg-green-50 text-green-700 border-green-200"
-            } table-caption caption-top`}>
-              {gameMessage}
-            </caption>
-          )}
-          */}
-
+        {/* Remove table-fixed and min-w-* from table */}
+        <table className="w-full border-collapse rounded-lg">
           {/* Main Sticky Header for Player Names and Rules */}
-          <thead className={`sticky z-20 top-0`}> {/* Simplified top calculation as caption is removed */}
+          <thead className={`sticky z-20 top-0`}> 
             <tr className="bg-blue-600 text-white">
-              <th className="p-0 text-left sticky left-0 z-20 bg-blue-600 w-[110px] sm:w-[180px] border-r border-blue-500 rounded-tl-lg">
+              {/* Use min-w and consistent padding */}
+              <th className="p-2 sm:p-3 text-left sticky left-0 z-20 bg-blue-600 min-w-[90px] sm:min-w-[160px] border-r border-blue-500 rounded-tl-lg">
                 <Button
                   onClick={onToggleRulesModal}
                   variant="ghost"
-                  className={`w-full h-full p-2 sm:p-3 text-left font-semibold text-sm sm:text-base flex justify-between items-center text-white hover:bg-red-500 focus:bg-red-500 transition-colors duration-200 rounded-none ${
+                  // Keep adjusted padding and text size for mobile
+                  className={`w-full h-full text-left font-semibold text-sm sm:text-base flex justify-between items-center text-white hover:bg-red-500 focus:bg-red-500 transition-colors duration-200 rounded-none ${
                     showRulesModal ? 'bg-red-600' : 'bg-blue-600'
                   }`}
                 >
@@ -201,12 +192,14 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
               </th>
               {players.map((player, index) => (
                 <th key={index} 
-                    className={`p-2 sm:p-3 text-center w-[75px] sm:w-[100px] border-r border-blue-500 ${
+                    // Use min-w and consistent padding
+                    className={`p-2 sm:p-3 text-center min-w-[70px] sm:min-w-[100px] border-r border-blue-500 ${
                   index === players.length - 1 ? 'border-r-0 rounded-tr-lg' : ''
                 } ${
                   index === currentPlayerIndex && !gameOver ? 'bg-red-600' : 'bg-blue-600'
                 }`}>
                   <div className="flex flex-col items-center justify-center">
+                    {/* Keep adjusted font size for player name */}
                     <span className="font-semibold text-sm sm:text-base break-words">{player}</span>
                     {isPlayerOnBoard[index] ? (
                       <span className="block text-[10px] sm:text-xs opacity-90 font-normal">
@@ -216,7 +209,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                       <span className="block text-[10px] sm:text-xs opacity-70 font-normal">
                         ({minimumToGetOnBoard} to board)
                       </span>
-                    ) : null} {/* Don't show 'to board' if game is over and player never got on board */}
+                    ) : null} 
                   </div>
                 </th>
               ))}
@@ -225,6 +218,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
 
           {/* Actual table body starts here */}
           <tbody className="font-mono">
+            {/* Remove fixed height h-16 from tr */}
             {Array.from({ length: displayedTurnCount }).map((_, turnIndex) => {
               const turnNumber = turnIndex + 1;
               let SingleDieComponent = null;
@@ -264,7 +258,8 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
               }
 
               return (
-                <tr key={`turn-${turnIndex}`} className={`${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} border-b border-gray-100 h-16`}>
+                <tr key={`turn-${turnIndex}`} className={`${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} border-b border-gray-100`}>
+                  {/* Adjust padding, remove fixed height */}
                   <td className={`p-2 text-left sticky left-0 z-[5] font-semibold border-r border-gray-100 ${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} flex justify-between items-center`}>
                     <span>Turn {turnNumber}</span>
                     <div className="flex items-center">
@@ -302,9 +297,10 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                     return (
                       <td 
                         key={`score-${turnIndex}-${playerIdx}`} 
-                        className={`text-center border-r border-gray-100 ${playerIdx === players.length -1 ? 'border-r-0' : ''} relative ${
-                          isActiveInputCell ? 'px-1 py-1 bg-white' :
-                          isCurrentPlayerCell && !gameOver ? 'p-1 bg-red-50' : 'p-1' 
+                        // Adjust padding for body cells
+                        className={`p-2 text-center border-r border-gray-100 ${playerIdx === players.length -1 ? 'border-r-0' : ''} relative ${ 
+                          isActiveInputCell && scoreEntryMode === 'auto' ? 'bg-yellow-100' : // Special bg for auto mode active cell container
+                          isCurrentPlayerCell && !gameOver ? 'bg-red-50' : '' // Background for non-active cells in current player column
                         }`}
                         onClick={() => {
                           if (canEditCell) {
@@ -328,14 +324,14 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                                 className={`w-full h-full text-center text-lg font-bold ${hideSpinnerClass} bg-yellow-100 text-blue-600 border-2 border-yellow-300 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 rounded-md p-0`}
                               />
                             ) : (
-                              // Auto mode (for PvP game)
-                              <span className={`block w-full h-full flex items-center justify-center text-lg font-bold ${isFarkleTurn ? 'text-red-500' : 'text-blue-600'} bg-yellow-100 rounded-md`}>
+                              // Auto mode (for PvP game) - Apply padding within the span to control height
+                              <span className={`block w-full h-full flex items-center justify-center text-lg font-bold py-1 ${isFarkleTurn ? 'text-red-500' : 'text-blue-600'} rounded-md`}>
                                 {isFarkleTurn ? 'F#*KLED!' : (liveTurnScore > 0 ? liveTurnScore : '-')}
                               </span>
                             )
                           ) : (
-                            // Non-active cell: display banked score or Farkle message
-                            <span className={`block w-full h-full flex items-center justify-center text-lg ${canEditCell ? 'cursor-pointer hover:bg-yellow-100 rounded-md transition-colors duration-150' : ''}`}>
+                            // Non-active cell: display banked score or Farkle message - Apply padding here too
+                            <span className={`block w-full h-full flex items-center justify-center text-lg py-1 ${canEditCell ? 'cursor-pointer hover:bg-yellow-100 rounded-md transition-colors duration-150' : ''}`}>
                                {cellScoreValue === 0 ? <span className="text-red-500 font-bold">F#*KLED!</span> : (cellScoreValue !== null && cellScoreValue !== undefined ? cellScoreValue : '' )}
                             </span>
                           )
@@ -346,11 +342,12 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                 </tr>
               );
             })}
-            {/* Total Scores Row (remains the same, but ensure it's visually distinct) */}
+            {/* Total Scores Row */}
+            {/* Adjust padding for total row */}
             <tr className="bg-blue-700 text-white font-bold text-lg sticky bottom-0 z-20">
-              <td className="p-3 text-left sticky left-0 z-[25] bg-blue-700 border-r border-blue-500 rounded-bl-lg">TOTAL</td> {/* Added rounded-bl-lg */}
+              <td className="p-2 sm:p-3 text-left sticky left-0 z-[25] bg-blue-700 border-r border-blue-500 rounded-bl-lg">TOTAL</td>
               {players.map((_, playerIdx) => (
-                <td key={`total-${playerIdx}`} className={`p-3 text-center border-r border-blue-500 ${playerIdx === players.length -1 ? 'border-r-0 rounded-br-lg' : ''}`}>
+                <td key={`total-${playerIdx}`} className={`p-2 sm:p-3 text-center border-r border-blue-500 ${playerIdx === players.length -1 ? 'border-r-0 rounded-br-lg' : ''}`}>
                   {playerTotals[playerIdx]}
                   {gameOver && winningPlayerName === players[playerIdx] && <span className="ml-1">🏆</span>} 
                 </td>
