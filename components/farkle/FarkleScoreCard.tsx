@@ -481,18 +481,23 @@ export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players }) => 
           playerTotals={playerStates.map(ps => ps.total)}
           isPlayerOnBoard={playerStates.map(ps => ps.isOnBoard)}
           currentPlayerIndex={currentPlayerIndex}
-          currentGlobalTurn={currentGlobalTurn}
+          actualCurrentTurnIndex={currentGlobalTurn - 1}
           displayedTurnCount={displayedTurnCount}
           currentTurnInput={currentTurnInput}
+          liveTurnScore={0}
+          isFarkleTurn={false}
           gameOver={gameOver}
+          gameMessage={gameMessage}
           onInputChange={handleInputChange}
           onBankScore={handleBankScore}
           minimumToGetOnBoard={MINIMUM_TO_GET_ON_BOARD}
+          winningScore={WINNING_SCORE}
           showFinalTallyModal={showFinalTallyModal}
           winningPlayerName={winningPlayerName}
           onCloseFinalTallyModal={() => setShowFinalTallyModal(false)}
           showRulesModal={showRulesModal} 
           onToggleRulesModal={toggleShowRulesModal} 
+          scoreEntryMode="manual"
           onEditBankedScore={handleEditBankedScoreTrigger}
           showConfirmModal={showConfirmModal}
           onConfirmScoreChange={handleConfirmScoreChange}
@@ -500,7 +505,6 @@ export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players }) => 
           editModalValue={editModalValue}
           onEditModalValueChange={setEditModalValue}
           selectedCellToEdit={selectedCellToEdit}
-          // Props for Final Round Initiation Notice Modal
           showFinalRoundInitiationNotice={showFinalRoundInitiationNotice}
           finalRoundInitiationMessage={finalRoundInitiationMessage}
           onDismissFinalRoundInitiationNotice={handleDismissFinalRoundInitiationNotice}

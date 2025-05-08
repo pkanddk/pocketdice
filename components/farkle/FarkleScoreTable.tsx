@@ -50,6 +50,7 @@ interface FarkleScoreTableProps {
   showFinalRoundInitiationNotice: boolean;
   finalRoundInitiationMessage: string | null;
   onDismissFinalRoundInitiationNotice: () => void;
+  scoreEntryMode?: 'manual' | 'auto'; // New prop for input mode
 }
 
 export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
@@ -87,9 +88,10 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
   // Add missing props for live score display
   liveTurnScore,
   isFarkleTurn,
+  scoreEntryMode = 'auto', // Default to auto if not specified
 }) => {
   // --- Add Log --- 
-  console.log("[FarkleScoreTable] Received props: turnScores:", JSON.stringify(turnScores), " liveTurnScore:", liveTurnScore, " isFarkleTurn:", isFarkleTurn);
+  console.log("[FarkleScoreTable] Received props: turnScores:", JSON.stringify(turnScores), " liveTurnScore:", liveTurnScore, " isFarkleTurn:", isFarkleTurn, " scoreEntryMode: ", scoreEntryMode);
   // --------------- 
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -312,10 +314,27 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                       >
                         {
                           isActiveInputCell ? (
-                            <span className={`block w-full h-full flex items-center justify-center text-lg font-bold ${isFarkleTurn ? 'text-red-500' : 'text-blue-600'} bg-yellow-100 rounded-md`}>
-                              {isFarkleTurn ? 'F#*KLED!' : (liveTurnScore > 0 ? liveTurnScore : '-')}
-                            </span>
+                            scoreEntryMode === 'manual' ? (
+                              <Input
+                                ref={inputRef}
+                                type="text"
+                                inputMode="numeric"
+                                pattern="\d*"
+                                value={currentTurnInput} // Use currentTurnInput for manual mode
+                                onChange={(e) => onInputChange(e.target.value)} // Use onInputChange for manual mode
+                                onKeyDown={handleKeyDown} // Use handleKeyDown for manual mode
+                                // onBlur={handleInputBlur} // Re-evaluate if onBlur is needed for manual input, might auto-bank too aggressively
+                                autoFocus
+                                className={`w-full h-full text-center text-lg font-bold ${hideSpinnerClass} bg-yellow-100 text-blue-600 border-2 border-yellow-300 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 rounded-md p-0`}
+                              />
+                            ) : (
+                              // Auto mode (for PvP game)
+                              <span className={`block w-full h-full flex items-center justify-center text-lg font-bold ${isFarkleTurn ? 'text-red-500' : 'text-blue-600'} bg-yellow-100 rounded-md`}>
+                                {isFarkleTurn ? 'F#*KLED!' : (liveTurnScore > 0 ? liveTurnScore : '-')}
+                              </span>
+                            )
                           ) : (
+                            // Non-active cell: display banked score or Farkle message
                             <span className={`block w-full h-full flex items-center justify-center text-lg ${canEditCell ? 'cursor-pointer hover:bg-yellow-100 rounded-md transition-colors duration-150' : ''}`}>
                                {cellScoreValue === 0 ? <span className="text-red-500 font-bold">F#*KLED!</span> : (cellScoreValue !== null && cellScoreValue !== undefined ? cellScoreValue : '' )}
                             </span>

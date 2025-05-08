@@ -989,6 +989,7 @@ function FarklePvPPageContent() {
             }} 
             showRulesModal={showRulesModal} 
             onToggleRulesModal={toggleShowRulesModal}
+            scoreEntryMode="auto"
             onEditBankedScore={() => {}} 
             showConfirmModal={false} 
             onConfirmScoreChange={() => {}} 
