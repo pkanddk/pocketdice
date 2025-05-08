@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Dice3 } from 'lucide-react';
 import { UniversalFooter } from '@/components/common/UniversalFooter';
 import { FarkleAI } from '@/components/FarkleAI';
+// @ts-ignore - Suppress canvas-confetti type error for now
+import confetti from 'canvas-confetti'; // For winner celebration
 
 const MINIMUM_TO_GET_ON_BOARD = 500;
 const WINNING_SCORE = 10000;
@@ -70,6 +72,12 @@ function FarklePvPPageContent() {
 
   // State for Rules Modal
   const [showRulesModal, setShowRulesModal] = useState(false);
+
+  // Game Over Modal
+  const [showGameOverModal, setShowGameOverModal] = useState(false);
+
+  // Final Round Initiation Notice Modal (Specific Content)
+  const [showFinalRoundModal, setShowFinalRoundModal] = useState(false);
 
   // Prepare props for FarkleScoreTable
   const playerTotals = playerStates.map(ps => ps.total);
@@ -192,253 +200,291 @@ function FarklePvPPageContent() {
     if (!gameStarted || gameOver || !playerNames.length || playerNames[currentPlayerIndex] !== "Computer" || isComputerThinking) {
       return;
     }
+
+    if (finalRoundTriggeredBy !== null && playerNames[currentPlayerIndex] === "Computer" && !finalRoundNoticeDismissed && !playersCompletedFinalRound[currentPlayerIndex]) {
+      console.log("AI is waiting for player to dismiss final round notice.");
+      return;
+    }
+
     setIsComputerThinking(true);
-    setAiStatusMessage(`Computer (${playerNames[currentPlayerIndex]}) is thinking...`);
-    console.log(`%cAI Turn: Player ${currentPlayerIndex + 1} (${playerNames[currentPlayerIndex]}) starting...`, "color: blue; font-weight: bold;");
+    const computerPlayerName = playerNames[currentPlayerIndex] ?? "Computer";
+    setAiStatusMessage(`${computerPlayerName} is thinking...`);
+    console.log(`%cAI Turn: Player ${currentPlayerIndex + 1} (${computerPlayerName}) starting...`, "color: blue; font-weight: bold;");
 
     let currentAITurnScore = 0;
-    let diceAvailableForAIRollCount = 6; // Starts with 6 dice
     let aiFarkledThisTurn = false;
-    let humanPlayerIndex = playerNames.findIndex(name => name !== "Computer");
-    if (humanPlayerIndex === -1 && playerNames.length > 1) humanPlayerIndex = 0; // Default if not found or single player vs computer as p0
+    
+    // Initialize AI's dice based on current game dice (usually all available at turn start)
+    let currentAIDiceValuesState = [...diceValues]; // AI starts with a fresh set or current board state if turn was interrupted (not typical here)
+    let currentAIDiceStatesState = Array(6).fill('available') as Array<'available' | 'held'>;
+    
+    setDiceStates(currentAIDiceStatesState); // Ensure UI shows all available at start of AI turn segment
+    setDiceValues(currentAIDiceValuesState); // And corresponding values
+    setCurrentTurnTotal(0); 
+    setIsFarkle(false);     
 
-    // Reset visual turn states for AI
-    setCurrentTurnTotal(0); // AI's turn score displayed to user
-    setIsFarkle(false);     // Visual Farkle indicator
-    setDiceStates(Array(6).fill('available')); // All dice visually available initially
+    await new Promise(res => setTimeout(res, 700)); 
 
-    while (true) { // Loop for multiple rolls in AI's turn
-      setAiStatusMessage(`Computer rolling ${diceAvailableForAIRollCount} dice...`);
-      console.log(`AI rolling ${diceAvailableForAIRollCount} dice.`);
-      const rolledDice = rollDiceForAI(diceAvailableForAIRollCount);
-      setDiceValues(rolledDice); // Update UI to show AI's roll
-      // Reset dice states to available for the new roll, so highlighting kept dice is fresh
-      setDiceStates(Array(6).fill('available')); 
+    while (true) { 
+      const diceToRollIndices = currentAIDiceStatesState.reduce((acc, state, index) => {
+        if (state === 'available') acc.push(index);
+        return acc;
+      }, [] as number[]);
 
-      // Short delay to simulate AI rolling and player to see dice
-      await new Promise(res => setTimeout(res, 1200)); 
+      if (diceToRollIndices.length === 0) {
+        // This should ideally only happen if AI achieved Hot Dice previously and is now about to roll 6
+        // Or if AI chose to bank (but that breaks the loop).
+        // If it's not hot dice state and no dice to roll, means all are held - AI must bank or has Farkled (already handled).
+        // For safety, if AI has 0 dice to roll and it's not because of hot dice, it must bank.
+        console.log("AI has no dice to roll and not hot dice. Forcing bank.");
+        break; // Break to bank currentAITurnScore
+      }
 
-      const decision = farkleAI.decideDiceToKeep(rolledDice, currentAITurnScore);
+      const numDiceToRollForAI = diceToRollIndices.length;
+      setAiStatusMessage(`${computerPlayerName} is rolling ${numDiceToRollForAI} dice...`);
+      console.log(`AI rolling ${numDiceToRollForAI} dice: Indices [${diceToRollIndices.join(',')}]`);
+      setIsRolling(true); 
+      
+      const newlyRolledValues = rollDiceForAI(numDiceToRollForAI);
+      
+      // Update the AI's view of dice values with the newly rolled ones
+      const nextAIDiceValuesState = [...currentAIDiceValuesState];
+      newlyRolledValues.forEach((value, i) => {
+        nextAIDiceValuesState[diceToRollIndices[i]!] = value;
+      });
+      currentAIDiceValuesState = nextAIDiceValuesState;
+      
+      await new Promise(res => setTimeout(res, 1000));
+      setIsRolling(false); 
+      setDiceValues(currentAIDiceValuesState); // Update main UI dice values
+      // Dice states are still as they were (some held, some available that were just rolled)
+
+      await new Promise(res => setTimeout(res, 800));
+
+      // AI decides based on the dice that were JUST rolled in this segment
+      const decision = farkleAI.decideDiceToKeep(newlyRolledValues, currentAITurnScore);
 
       if (decision === null) {
-        setAiStatusMessage("Computer FARKLED!");
+        setAiStatusMessage(`${computerPlayerName} FARKLED on this roll!`);
         console.log("%cAI FARKLED this roll!", "color: red; font-weight: bold;");
-        currentAITurnScore = 0; // Score for the turn is lost
+        // Display the Farkle roll: all dice involved in the roll are available, others remain as they were (held)
+        const finalDiceStatesOnFarkle = [...currentAIDiceStatesState];
+        diceToRollIndices.forEach(idx => finalDiceStatesOnFarkle[idx] = 'available');
+        setDiceStates(finalDiceStatesOnFarkle);
+        setDiceValues(currentAIDiceValuesState); // Show the dice that caused the Farkle
+        currentAITurnScore = 0; 
         aiFarkledThisTurn = true;
-        setIsFarkle(true); // Update visual indicator
-        // Update dice display one last time to show the Farkle roll
-        setDiceValues(rolledDice); 
-        setDiceStates(Array(6).fill('available')); // Visually show no dice are held after Farkle
-        await new Promise(res => setTimeout(res, 1500)); // Delay to show Farkle
-        break; // End AI's turn
+        setIsFarkle(true); 
+        await new Promise(res => setTimeout(res, 1800)); 
+        break; 
       }
 
-      setAiStatusMessage(`Computer kept: ${decision.descriptionOfKept} (${decision.scoreForKeptDice} pts).`);
-      console.log(`AI kept: ${decision.descriptionOfKept} for ${decision.scoreForKeptDice} points.`);
-      console.log(`   Kept Dice: [${decision.keptDice.join(',')}]`);
-      console.log(`   Remaining Dice to Roll: [${decision.remainingDiceToRoll.join(',')}]`);
-
+      setAiStatusMessage(`${computerPlayerName} kept: ${decision.descriptionOfKept} (${decision.scoreForKeptDice} pts).`);
+      console.log(`AI kept: ${decision.descriptionOfKept} for ${decision.scoreForKeptDice} points from roll [${newlyRolledValues.join(',')}]`);
+      
       currentAITurnScore += decision.scoreForKeptDice;
-      setCurrentTurnTotal(currentAITurnScore); // Update UI with AI's accumulating turn score
+      setCurrentTurnTotal(currentAITurnScore); 
 
-      // --- Visual update for kept dice ---
-      const newDiceStates = Array(6).fill('available') as Array<'available' | 'held'>;
-      const diceFromRoll = [...rolledDice]; // Use a copy of what was just rolled for accurate mapping
-      const diceActuallyKeptIndices: number[] = [];
+      // Update currentAIDiceStatesState to mark the newly kept dice as 'held'
+      // decision.keptDice contains values from newlyRolledValues
+      let tempNewlyRolledValues = [...newlyRolledValues];
+      let tempDiceToRollIndices = [...diceToRollIndices];
 
       decision.keptDice.forEach(keptValue => {
-        // Find an index in the actual `rolledDice` array (represented by `diceFromRoll`)
-        // that matches the keptValue and hasn't been used yet for marking a die as held.
-        let foundMatchIndex = -1;
-        for (let i = 0; i < diceFromRoll.length; i++) {
-          // Check if this die from the roll matches the value AI wants to keep
-          // AND ensure this specific die instance (by its position in the roll) hasn't already been marked as kept.
-          if (diceFromRoll[i] === keptValue && !diceActuallyKeptIndices.includes(i)) {
-            foundMatchIndex = i;
-            break;
-          }
-        }
-
-        if (foundMatchIndex !== -1) {
-          // The die at `foundMatchIndex` in the `rolledDice` array corresponds to one of the kept dice.
-          // We need to find which UI slot this die occupies. 
-          // If AI rolled fewer than 6 dice, `rolledDice` has fewer than 6 items.
-          // `diceValues` is the state variable for the 6 UI dice slots.
-          // This part assumes `rolledDice` values are directly in `diceValues` slots that were rolled.
-          // For simplicity, if AI rolled N dice, we assume these are the first N slots of `diceValues` for this turn segment.
-          // This mapping logic might need adjustment if `diceValues` is not updated predictably before this.
-          // Given `setDiceValues(rolledDice)` happens right before, `rolledDice[foundMatchIndex]` is the value, 
-          // and `foundMatchIndex` is its position *within that roll*.
-          // If `diceAvailableForAIRollCount` was less than 6, these indices map to the first `diceAvailableForAIRollCount` slots.
-          // This current implementation assumes `rolledDice` has 6 values, padded if necessary, or that diceValues reflects the roll.
-          newDiceStates[foundMatchIndex] = 'held';
-          diceActuallyKeptIndices.push(foundMatchIndex); // Mark this specific die index as used for a kept die
+        const indexInNewlyRolled = tempNewlyRolledValues.findIndex(d => d === keptValue);
+        if (indexInNewlyRolled !== -1) {
+          const originalGlobalIndex = tempDiceToRollIndices[indexInNewlyRolled]!;
+          currentAIDiceStatesState[originalGlobalIndex] = 'held';
+          tempNewlyRolledValues.splice(indexInNewlyRolled, 1);
+          tempDiceToRollIndices.splice(indexInNewlyRolled, 1);
         } else {
-          // This case should ideally not happen if decideDiceToKeep is consistent with the roll.
-          console.warn(`AI logic warning: Could not find a die with value ${keptValue} from the roll to mark as kept.`);
+          console.warn(`AI decision inconsistency: Could not find kept die ${keptValue} in newly rolled dice.`);
         }
       });
-      setDiceStates(newDiceStates); 
-      // `setDiceValues(rolledDice)` already shows the current roll.
-      // The old logic to show `kept + remaining` in `diceValues` is removed for clarity.
+      setDiceStates(currentAIDiceStatesState); // Update main UI dice states
+      // setDiceValues was already updated with the roll outcome
 
-      console.log("AI current turn score:", currentAITurnScore);
-      await new Promise(res => setTimeout(res, 1500)); // Delay to show kept dice & score
+      // Check for Hot Dice: if all dice in currentAIDiceStatesState are now 'held'
+      const allDiceHeld = currentAIDiceStatesState.every(state => state === 'held');
+      let diceAvailableForNextAIRollCount;
 
-      diceAvailableForAIRollCount = decision.remainingDiceToRoll.length;
-      if (diceAvailableForAIRollCount === 0) {
-        setAiStatusMessage("Computer has HOT DICE! Rolling 6 dice.");
-        console.log("AI has HOT DICE! Rolling all 6 again.");
-        diceAvailableForAIRollCount = 6; // Hot dice, roll all 6
-        // setDiceStates(Array(6).fill('available')); // Already handled at start of roll logic
+      if (allDiceHeld) {
+        setAiStatusMessage(`${computerPlayerName} got HOT DICE! Rolling all 6 again.`);
+        console.log("AI got Hot Dice!");
+        currentAIDiceStatesState = Array(6).fill('available'); // All become available
+        setDiceStates(currentAIDiceStatesState); // Update UI
+        diceAvailableForNextAIRollCount = 6;
+        await new Promise(res => setTimeout(res, 1500)); 
+      } else {
+        diceAvailableForNextAIRollCount = currentAIDiceStatesState.filter(s => s === 'available').length;
       }
-      
-      const currentAIPlayerStateForShouldRoll = playerStates[currentPlayerIndex];
-      const opponentPlayerStateForShouldRoll = humanPlayerIndex !== -1 ? playerStates[humanPlayerIndex] : undefined;
 
-      const shouldRoll = currentAIPlayerStateForShouldRoll ? farkleAI.shouldRollAgain(
-        diceAvailableForAIRollCount, 
-        currentAITurnScore, 
-        currentAIPlayerStateForShouldRoll.total, 
-        opponentPlayerStateForShouldRoll ? opponentPlayerStateForShouldRoll.total : 0 // Default opponent score to 0 if not found
-      ) : false; // Default to not rolling if AI player state is somehow undefined
+      const computerPlayerState = playerStates[currentPlayerIndex];
+      const humanPlayerState = playerStates[playerNames.findIndex(name => name !== "Computer")];
+      const computerTotalGameScore = computerPlayerState ? computerPlayerState.total : 0;
+      const opponentTotalGameScore = humanPlayerState ? humanPlayerState.total : 0;
 
-      if (!shouldRoll) {
-        setAiStatusMessage("Computer decides to BANK the score.");
-        console.log("AI decides to BANK the score.");
-        // AI decides to bank, set finalRoundNoticeDismissed to false if AI triggers final round
-        if (currentAITurnScore > 0 && currentAIPlayerStateForShouldRoll && 
-            (currentAIPlayerStateForShouldRoll.total + currentAITurnScore >= WINNING_SCORE) && 
-            finalRoundTriggeredBy === null) {
-          setFinalRoundNoticeDismissed(false);
-        }
-        break; // AI decides to bank, end turn
+      if (diceAvailableForNextAIRollCount === 0) {
+         // All dice scored or used, but not hot dice (this case means all dice are held)
+         // AI Must bank.
+         setAiStatusMessage(`${computerPlayerName} used all dice! Must bank ${currentAITurnScore} points.`);
+         console.log("AI used all dice or no more dice to roll. Forcing bank.");
+         await new Promise(res => setTimeout(res, 1500));
+         break;
       }
-      setAiStatusMessage("Computer decides to ROLL AGAIN.");
-      console.log("AI decides to ROLL AGAIN.");
-      // Loop continues for the next roll
+
+      if (!farkleAI.shouldRollAgain(
+          diceAvailableForNextAIRollCount, 
+          currentAITurnScore,
+          computerTotalGameScore,
+          opponentTotalGameScore 
+      )) {
+        setAiStatusMessage(`${computerPlayerName} is banking ${currentAITurnScore} points.`);
+        console.log(`AI decided to bank ${currentAITurnScore} points.`);
+        await new Promise(res => setTimeout(res, 1500)); 
+        break; 
+      }
+      await new Promise(res => setTimeout(res, 1200));
     }
 
-    // --- End of AI's turn (either Farkled or Decided to Bank) ---
-    if (!aiFarkledThisTurn) {
-      setAiStatusMessage(`Computer BANKED ${currentAITurnScore} points!`);
-      console.log(`%cAI is BANKING ${currentAITurnScore} points.`, "color: green; font-weight: bold;");
-      // Update playerStates directly - adapting parts of handleBankScore logic
-      const currentAIPlayerStateForBanking = playerStates[currentPlayerIndex];
-      
-      // --- Add Log ---
-      const aiCurrentTotalForLog = currentAIPlayerStateForBanking ? currentAIPlayerStateForBanking.total : 'N/A';
-      console.log(`[handleComputerTurn - AI Banks] AI P${currentPlayerIndex} attempting to bank score: ${currentAITurnScore}. Current total: ${aiCurrentTotalForLog}`);
-      // ---------------
-
-      if (!currentAIPlayerStateForBanking) {
-        console.error("AI Banking Error: Could not find AI player state.");
-        // Decide how to handle this - perhaps end turn without banking or throw error
-        aiFarkledThisTurn = true; // Treat as an error/Farkle
-      } else {
-        let canBankThisScore = false;
-        if (currentAIPlayerStateForBanking.isOnBoard || currentAITurnScore >= MINIMUM_TO_GET_ON_BOARD) {
-          canBankThisScore = true;
-        }
-
-        if (canBankThisScore) {
-          setPlayerStates(prev => {
-            // --- Add Log ---
-            console.log(`[handleComputerTurn - AI Banks - setPlayerStates START] Prev playerStates for AI P${currentPlayerIndex}:`, JSON.parse(JSON.stringify(prev[currentPlayerIndex])));
-            // ---------------
-            return prev.map((ps, index) => {
-              if (index === currentPlayerIndex) {
-                const newTotal = ps.total + currentAITurnScore;
-                const newScores = Array.isArray(ps.scores) ? [...ps.scores, currentAITurnScore] : [currentAITurnScore];
-                console.log(`[handleComputerTurn - AI Banks - setPlayerStates] AI P${currentPlayerIndex} newTotal: ${newTotal}`);
-                // Check for final round trigger
-                if (newTotal >= WINNING_SCORE && finalRoundTriggeredBy === null) {
-                  console.log(`AI (${playerNames[currentPlayerIndex]}) reached WINNING_SCORE (${newTotal}), triggering final round!`);
-                  setFinalRoundTriggeredBy(currentPlayerIndex);
-                  setPlayersCompletedFinalRound(playerNames.map((_, i) => i === currentPlayerIndex));
-                  setFinalRoundNoticeDismissed(false); // Reset dismissal state for new final round by AI
-                } else if (finalRoundTriggeredBy !== null) {
-                  console.log(`[handleComputerTurn - AI Banks] Final round was active (triggered by P${finalRoundTriggeredBy}). AI P${currentPlayerIndex} completing its final turn.`);
-                  setPlayersCompletedFinalRound(prevCompletion => {
-                    const newCompletion = [...prevCompletion];
-                    if (newCompletion.length > currentPlayerIndex) newCompletion[currentPlayerIndex] = true;
-                    console.log("[handleComputerTurn - AI Banks] Updated playersCompletedFinalRound for AI:", JSON.parse(JSON.stringify(newCompletion)));
-                    return newCompletion;
-                  });
-                }
-                return { ...ps, total: newTotal, isOnBoard: true, scores: newScores };
-              }
-              return ps;
-            })
-          });
+    // Determine the final score the AI will bank for this turn
+    let scoreToBankForThisTurn: number;
+    if (aiFarkledThisTurn) {
+        scoreToBankForThisTurn = 0;
+        // AI Farkle message was set inside the roll loop
+    } else {
+        const currentAIPlayerState = playerStates[currentPlayerIndex]; 
+        if (currentAIPlayerState && !currentAIPlayerState.isOnBoard && currentAITurnScore < MINIMUM_TO_GET_ON_BOARD) {
+            setAiStatusMessage(`${computerPlayerName} needed ${MINIMUM_TO_GET_ON_BOARD} to get on board, but only scored ${currentAITurnScore}. Score for this turn is 0.`);
+            await new Promise(res => setTimeout(res, 2000)); // Hold message
+            scoreToBankForThisTurn = 0; 
         } else {
-          setAiStatusMessage(`Computer FAILED TO BANK: Score ${currentAITurnScore} < ${MINIMUM_TO_GET_ON_BOARD} to get on board. Turn score: 0.`);
-          console.log(`%cAI FAILED TO BANK: Score ${currentAITurnScore} is less than ${MINIMUM_TO_GET_ON_BOARD} to get on board. Score for turn is 0.`, "color: orange;");
-          currentAITurnScore = 0; // Lost score
-          setIsFarkle(true); // Visual indication of a sort of Farkle (failed to bank minimum)
-          aiFarkledThisTurn = true; // Treat as Farkle for score recording
-          setPlayerStates(prev => 
-            prev.map((ps, index) => {
-              if (index === currentPlayerIndex) {
-                const newScores = Array.isArray(ps.scores) ? [...ps.scores, 0] : [0];
-                return { ...ps, scores: newScores }; // Record 0 for the turn
-              }
-              return ps;
-            })
-          );
-          await new Promise(res => setTimeout(res, 1500)); // Delay to show failed bank
+            scoreToBankForThisTurn = currentAITurnScore; 
         }
-      }
-    } else { // aiFarkledThisTurn is true
-       setAiStatusMessage("Computer FARKLED. Turn score: 0.");
-       console.log("%cAI FARKLED. Recording 0 for the turn.", "color: red; font-weight: bold;");
+    }
 
-       // If AI Farkles during a final round, mark its turn as completed for the final round
-       if (finalRoundTriggeredBy !== null) {
-        setPlayersCompletedFinalRound(prevCompletion => {
-          const newCompletion = [...prevCompletion];
-          // Ensure playerNames is available and currentPlayerIndex is valid
-          if (playerNames.length > 0 && currentPlayerIndex < newCompletion.length && currentPlayerIndex >= 0) {
-            newCompletion[currentPlayerIndex] = true;
-            console.log(`[AI FARKLE - Final Round] Player ${playerNames[currentPlayerIndex]} (Index: ${currentPlayerIndex}) completed final round due to Farkle. Completion:`, newCompletion);
-          } else {
-            console.warn("[AI FARKLE - Final Round] Could not update final round completion: Invalid index or playerNames empty.");
-          }
-          return newCompletion;
-        });
-      }
+    // Defer resetting currentTurnTotal/currentRollScore until nextTurn to avoid dash flash when AI triggers final round.
+    // setCurrentTurnTotal(0); // Moved to nextTurn()
+    // setCurrentRollScore(0); // Moved to nextTurn()
 
-       setPlayerStates(prev => 
-          prev.map((ps, index) => {
+    // Calculate AI's potential new total to check for final round trigger
+    const aiPlayerStateBeforeBank = playerStates[currentPlayerIndex];
+    let potentialNewTotalForAI = aiPlayerStateBeforeBank ? aiPlayerStateBeforeBank.total : 0;
+    let willActuallyBankScore = false; // Flag to see if AI's total will change
+
+    if (scoreToBankForThisTurn > 0) {
+        if (aiPlayerStateBeforeBank && (aiPlayerStateBeforeBank.isOnBoard || scoreToBankForThisTurn >= MINIMUM_TO_GET_ON_BOARD)) {
+            potentialNewTotalForAI += scoreToBankForThisTurn;
+            willActuallyBankScore = true;
+        }
+    }
+    // If scoreToBankForThisTurn is 0, potentialNewTotalForAI remains unchanged.
+
+    const shouldComputerTriggerFinalRound = potentialNewTotalForAI >= WINNING_SCORE && finalRoundTriggeredBy === null;
+
+    // If AI is triggering the final round, set thinking to false BEFORE updating player states that cause re-render.
+    // REVERTING THIS - caused immediate re-trigger
+    // if (shouldComputerTriggerFinalRound) {
+    //     console.log(`[handleComputerTurn] AI is about to trigger final round. Setting isComputerThinking to false early.`);
+    //     setIsComputerThinking(false);
+    // }
+
+    // Now, update playerStates with the determined scoreToBankForThisTurn
+    setPlayerStates(prevPlayerStates => {
+        return prevPlayerStates.map((ps, index) => {
             if (index === currentPlayerIndex) {
-              const newScores = Array.isArray(ps.scores) ? [...ps.scores, 0] : [0];
-              return { ...ps, scores: newScores }; // Record 0 for the turn
+                let newTotal = ps.total;
+                let newIsOnBoard = ps.isOnBoard;
+                if (scoreToBankForThisTurn > 0) { 
+                    if (ps.isOnBoard || scoreToBankForThisTurn >= MINIMUM_TO_GET_ON_BOARD) {
+                        newTotal += scoreToBankForThisTurn;
+                        newIsOnBoard = true;
+                    }
+                }
+                const scores = Array.isArray(ps.scores) ? ps.scores : [];
+                console.log(`%cAI turn recorded: Player ${playerNames[index]}, Score for this turn: ${scoreToBankForThisTurn}, Prev Total: ${ps.total}, New Total: ${newTotal}, IsOnBoard: ${newIsOnBoard}`, "color: green; font-weight: bold;");
+                return {
+                    ...ps,
+                    total: newTotal,
+                    isOnBoard: newIsOnBoard,
+                    scores: [...scores, scoreToBankForThisTurn]
+                };
             }
             return ps;
-          })
-        );
+        });
+    });
+    
+    // Update status message based on the outcome
+    if (willActuallyBankScore) { // Use the flag here, as scoreToBankForThisTurn > 0 doesn't mean total changed (if not on board)
+        setAiStatusMessage(`${computerPlayerName} banked ${scoreToBankForThisTurn} points. Total: ${potentialNewTotalForAI}`);
+        await new Promise(res => setTimeout(res, 1800));
+    } // Messages for Farkle or not getting on board (where scoreToBankForThisTurn becomes 0) are handled above or in roll loop
+
+    // If this was the AI's turn in the final round, or if AI is triggering it.
+    if (shouldComputerTriggerFinalRound) {
+        console.log(`[handleComputerTurn] Computer (${playerNames[currentPlayerIndex]}) IS TRIGGERING the final round with ${potentialNewTotalForAI} points!`);
+        // setIsComputerThinking(false); // Reverted - moved back to end
+        setFinalRoundTriggeredBy(currentPlayerIndex); // AI is triggering
+        const initialCompletion = Array(playerNames.length).fill(false);
+        if (currentPlayerIndex >= 0 && currentPlayerIndex < initialCompletion.length) {
+            initialCompletion[currentPlayerIndex] = true; // Mark AI as completed their triggering turn
+        }
+        setPlayersCompletedFinalRound(initialCompletion);
+        setFinalRoundNoticeDismissed(false); // Ensure the notice will show
+    } else if (finalRoundTriggeredBy !== null) { // Final round was already active, AI is completing its turn
+        console.log(`[handleComputerTurn] AI (${playerNames[currentPlayerIndex]}) completed its final round turn (already active).`);
+        setPlayersCompletedFinalRound(prevCompletion => {
+            const newCompletion = [...prevCompletion];
+            if (newCompletion.length > currentPlayerIndex && currentPlayerIndex >= 0) {
+                newCompletion[currentPlayerIndex] = true;
+            } else {
+                console.warn(`[handleComputerTurn] Attempted to update final round completion for invalid AI index: ${currentPlayerIndex}, length: ${newCompletion.length}`);
+            }
+            console.log(`[handleComputerTurn] Updated playersCompletedFinalRound after AI turn:`, JSON.parse(JSON.stringify(newCompletion)));
+            return newCompletion;
+        });
+        // Ensure isComputerThinking is false if it wasn't set earlier (e.g. AI completes an already active final round)
+        // Reverted - Setting this later now
+        // if (isComputerThinking) setIsComputerThinking(false); 
+    } else {
+        // Normal turn, not a final round scenario for the AI
+        // Reverted - Setting this later now
+        // setIsComputerThinking(false);
     }
 
-    // Reset turn-specific UI states for next player
-    setCurrentTurnTotal(0);
-    // Dice and Farkle state already handled or will be reset by nextTurn()
-
+    // SET isComputerThinking to false AFTER all processing for the turn is done, right before advancing.
     setIsComputerThinking(false);
-    // setAiStatusMessage(""); // Clear AI message immediately or let next turn/action clear it.
-    console.log("%cAI Turn Ended.", "color: blue; font-weight: bold;");
+
+    // AiStatusMessage will be cleared in nextTurn() or when human player starts their action.
+    
     checkForGameEndOrAdvanceTurn();
   };
 
   // Effect to trigger AI turn
   useEffect(() => {
+    // --- ADDED: Absolute check for gameOver first --- 
+    if (gameOver) {
+      console.log("[AI useEffect] Game is over, preventing AI turn trigger.");
+      return; 
+    }
+    // --------------------------------------------------
+
     // Ensure playerNames is populated before checking playerNames[currentPlayerIndex]
-    if (gameStarted && playerNames.length > 0 && playerNames[currentPlayerIndex] === "Computer" && !isComputerThinking && !gameOver) {
+    // ADDED Check: Do not trigger AI if final round was JUST triggered by AI (wait for notice dismissal)
+    const justTriggeredByAI = finalRoundTriggeredBy === currentPlayerIndex && !finalRoundNoticeDismissed;
+
+    if (gameStarted && 
+        playerNames.length > 0 && 
+        playerNames[currentPlayerIndex] === "Computer" && 
+        !isComputerThinking && 
+        !gameOver &&
+        !justTriggeredByAI) { // <-- Added condition
       console.log("useEffect triggering AI turn");
       handleComputerTurn();
     }
     // Adding handleComputerTurn to dependencies if it's stable (e.g., wrapped in useCallback or defined outside if static)
     // For now, keeping dependencies simple. If handleComputerTurn causes re-renders, we'll optimize.
-  }, [currentPlayerIndex, gameStarted, playerNames, isComputerThinking, gameOver]); // Removed handleComputerTurn from deps for now to avoid potential loops until it's stable
+  }, [currentPlayerIndex, gameStarted, playerNames, isComputerThinking, gameOver, finalRoundTriggeredBy, finalRoundNoticeDismissed]); // Added final round state dependencies
 
   // useEffect for player initialization - THIS IS THE NEW/MODIFIED HOOK
   useEffect(() => {
@@ -448,7 +494,21 @@ function FarklePvPPageContent() {
     console.log("[PlayerInit] Setting player names to:", initialNames);
     setPlayerNames(initialNames);
 
-    const initialStates = initialNames.map(() => createInitialPlayerState()); // Use the stable function
+    let initialStates = initialNames.map(() => createInitialPlayerState()); 
+
+    // Debug Mode: Start Player 1 near winning score
+    const debugEndGame = searchParams.get("debug_endgame") === "true";
+    if (debugEndGame) {
+      console.log("%c[PlayerInit] DEBUG ENDGAME MODE ACTIVATED: Both players start near winning score.", "color: orange; font-weight: bold;");
+      initialNames.forEach((name, index) => {
+        if (initialStates[index]) {
+          initialStates[index]!.total = 9800;
+          initialStates[index]!.isOnBoard = true;
+          console.log(`%c   -> ${name} starts at 9800 points.`, "color: orange;");
+        }
+      });
+    }
+
     console.log("[PlayerInit] Setting player states to:", JSON.stringify(initialStates));
     setPlayerStates(initialStates);
 
@@ -724,18 +784,26 @@ function FarklePvPPageContent() {
   };
 
   const nextTurn = () => {
-    if (gameOver && !isTieBreakerActive) return; 
-    if (gameOver && isTieBreakerActive) { 
-        console.log("[nextTurn] Game is definitively over, even post-tie-breaker. No next turn.");
-        return;
-    }
+    if (gameOver && !isTieBreakerActive) {
+      console.log("[nextTurn] Game is over and not in tie-breaker. No next turn.");
+      return;
+    } 
+    // If tie-breaker is active, it has its own game over conditions within its flow.
+    // If game is over AND tie-breaker also resolved to game over, this initial check handles it.
+
+    // This log was already present, good for confirming state.
+    // if (gameOver && isTieBreakerActive) { 
+    //     console.log("[nextTurn] Game is definitively over, even post-tie-breaker. No next turn.");
+    //     return;
+    // }
 
     setCurrentRollIndices([]); 
-    setCurrentRollScore(0);
-    setCurrentTurnTotal(0);
+    setCurrentTurnTotal(0); // Reset live scores for the incoming player
+    setCurrentRollScore(0); // Reset live scores for the incoming player
     setDiceStates(Array(6).fill('available'));
     setDiceValues([1, 1, 1, 1, 1, 1]); 
     setIsFarkle(false);
+    setAiStatusMessage(""); // Clear AI message at the start of any turn transition
 
     if (isTieBreakerActive) {
       if (tieBreakerPlayerIndices.length === 0) {
@@ -1154,8 +1222,16 @@ function FarklePvPPageContent() {
       // --- Refactored Final Round Trigger Logic ---
       const currentTotal = currentPlayerState.total; 
       const newTotal = currentTotal + scoreToBank;
-      const shouldTriggerFinalRound = newTotal >= WINNING_SCORE && finalRoundTriggeredBy === null;
-      console.log(`[handleBankScore - Pre-Check] Player ${playerNames[currentPlayerIndex]} banking ${scoreToBank}. Current: ${currentTotal}, NewTotal: ${newTotal}. ShouldTriggerFinalRound: ${shouldTriggerFinalRound}`);
+
+      let isFRTBActuallyNullForThisCheck = finalRoundTriggeredBy === null;
+      // Check for premature setting of finalRoundTriggeredBy specifically in debug/edge cases
+      if (finalRoundTriggeredBy === currentPlayerIndex && currentTotal < WINNING_SCORE) {
+          console.warn(`[handleBankScore] Correcting a potentially premature finalRoundTriggeredBy for player ${playerNames[currentPlayerIndex]}. Treating as null for this bank's trigger check.`);
+          isFRTBActuallyNullForThisCheck = true;
+      }
+
+      const shouldTriggerFinalRound = newTotal >= WINNING_SCORE && isFRTBActuallyNullForThisCheck;
+      console.log(`[handleBankScore - Pre-Check] Player ${playerNames[currentPlayerIndex]} banking ${scoreToBank}. Current: ${currentTotal}, NewTotal: ${newTotal}. Orig FRTB: ${finalRoundTriggeredBy}, isFRTBNullForCheck: ${isFRTBActuallyNullForThisCheck}, ShouldTriggerFinalRound: ${shouldTriggerFinalRound}`);
       // -----------------------------------------
 
       // Update player scores and totals first
@@ -1296,6 +1372,75 @@ function FarklePvPPageContent() {
   }, [searchParams, router]);
   */
 
+  // useEffect to handle AI's turn after final round notice is dismissed
+  useEffect(() => {
+    if (finalRoundNoticeDismissed && 
+        finalRoundTriggeredBy !== null && 
+        playerNames[currentPlayerIndex] === "Computer" && 
+        !playersCompletedFinalRound[currentPlayerIndex] && 
+        !gameOver &&
+        !isComputerThinking) { // Ensure AI isn't already thinking
+      console.log("Final round notice dismissed, and it is Computer's turn. Triggering AI turn.");
+      handleComputerTurn();
+    }
+  }, [finalRoundNoticeDismissed, currentPlayerIndex, finalRoundTriggeredBy, playerNames, playersCompletedFinalRound, gameOver, isComputerThinking]);
+
+  useEffect(() => {
+    // This effect will control the visibility of the "Final Round Initiated" modal
+    if (finalRoundTriggeredBy !== null && !gameOver && !finalRoundNoticeDismissed) {
+      // Check if it's the *other* player's turn to see the notice,
+      // or if it's the AI that triggered it, the human should see it.
+      const humanPlayerIndex = playerNames.findIndex(name => name !== "Computer");
+      const computerPlayerIndex = playerNames.findIndex(name => name === "Computer");
+
+      if (finalRoundTriggeredBy === humanPlayerIndex && currentPlayerIndex === computerPlayerIndex) {
+        // Human triggered, it's now computer's turn (but AI will wait due to `handleComputerTurn` logic)
+        // The notice should be shown to the human that AI gets a final turn.
+        setShowFinalRoundModal(true);
+      } else if (finalRoundTriggeredBy === computerPlayerIndex && currentPlayerIndex === humanPlayerIndex) {
+        // Computer triggered, it's now human's turn.
+        // The notice should be shown to the human that they get a final turn.
+        setShowFinalRoundModal(true);
+      } else if (finalRoundTriggeredBy === currentPlayerIndex && !playersCompletedFinalRound[currentPlayerIndex]) {
+        // This case handles if the player who triggered is the one currently up, and they haven't seen the notice.
+        // (e.g. page refresh, or if the notice wasn't shown immediately upon banking)
+        // This might be redundant if the above cases cover it, but good as a fallback.
+        setShowFinalRoundModal(true);
+      } else {
+        setShowFinalRoundModal(false);
+      }
+    } else {
+      setShowFinalRoundModal(false);
+    }
+  }, [finalRoundTriggeredBy, gameOver, finalRoundNoticeDismissed, currentPlayerIndex, playerNames, playersCompletedFinalRound]);
+
+  useEffect(() => {
+    if (gameOver && !isTieBreakerActive) {
+      setShowGameOverModal(true);
+    } else {
+      setShowGameOverModal(false); // Hide if game not over or if tie-breaker is active
+    }
+  }, [gameOver, isTieBreakerActive]);
+
+  const handleDismissFinalRoundNotice = () => {
+    setFinalRoundNoticeDismissed(true);
+    setShowFinalRoundModal(false); // Explicitly hide modal
+    // The useEffect above will now trigger the AI's turn if appropriate.
+  };
+
+  // useEffect for Confetti on Game Over
+  useEffect(() => {
+    if (showGameOverModal && winningPlayerName) {
+      // @ts-ignore
+      confetti({ particleCount: 200, spread: 120, origin: { y: 0.6 }, scalar: 1.2 });
+      // You can try a second burst for more effect
+      setTimeout(() => {
+        // @ts-ignore
+        confetti({ particleCount: 100, spread: 160, origin: { y: 0.5 }, angle: Math.random() * 180 - 90});
+      }, 300);
+    }
+  }, [showGameOverModal, winningPlayerName]);
+
   if (!gameStarted || playerNames.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -1353,10 +1498,6 @@ function FarklePvPPageContent() {
             {playerNames.length} Player{playerNames.length > 1 ? 's' : ''} | Turn {headerDisplayTurn}
           </p>
         )}
-        {/* Placeholder for AI Status Message - You can move this to a more suitable location */}
-        {isComputerThinking && aiStatusMessage && (
-          <p className="text-center text-lg text-purple-700 my-2 animate-pulse">{aiStatusMessage}</p>
-        )}
       </header>
       
       <div className="mb-6 w-full max-w-2xl">
@@ -1381,56 +1522,63 @@ function FarklePvPPageContent() {
         />
       </div>
 
-      {playerNames.length > 0 && playerStates.length > 0 && (
-        <div className="w-full max-w-2xl">
-          <FarkleScoreTable 
-            players={playerNames}
-            turnScores={playerStates.map(ps => ps.scores.map(s => s ?? null))} 
-            playerTotals={playerTotals} 
-            isPlayerOnBoard={isPlayerOnBoard} 
-            currentPlayerIndex={currentPlayerIndex}
-            actualCurrentTurnIndex={actualCurrentTurnIndex}
-            displayedTurnCount={displayTurnCount}
-            currentTurnInput=""
-            gameOver={gameOver}
-            liveTurnScore={currentTurnTotal}
-            isFarkleTurn={isFarkle}
-            onInputChange={() => {}}
-            onBankScore={() => {}}
-            minimumToGetOnBoard={MINIMUM_TO_GET_ON_BOARD}
-            showFinalTallyModal={gameOver}
-            winningPlayerName={winningPlayerName}
-            gameMessage={null}
-            winningScore={WINNING_SCORE}
-            onCloseFinalTallyModal={() => { 
-              console.log("Final tally modal closed by user. Resetting game with same players.");
-              handleResetGameSamePlayers(); // Call the reset function
-            }} 
-            showRulesModal={showRulesModal} 
-            onToggleRulesModal={toggleShowRulesModal}
-            scoreEntryMode="auto"
-            onEditBankedScore={() => {}} 
-            showConfirmModal={false} 
-            onConfirmScoreChange={() => {}} 
-            onCancelScoreEdit={() => {}} 
-            editModalValue="" 
-            onEditModalValueChange={() => {}} 
-            selectedCellToEdit={null} 
-            showFinalRoundInitiationNotice={finalRoundTriggeredBy !== null && !gameOver && !finalRoundNoticeDismissed}
-            finalRoundInitiationMessage={
-              finalRoundTriggeredBy !== null && playerNames[finalRoundTriggeredBy] ? 
-                (playerNames[finalRoundTriggeredBy] !== 'Computer' ? 
-                  `Congratulations, ${playerNames[finalRoundTriggeredBy]}! You've reached ${WINNING_SCORE} points! The Computer gets one more turn.` :
-                  `${playerNames[finalRoundTriggeredBy]} has reached ${WINNING_SCORE}! You get one more turn human.`
-                ) : null
-            }
-            onDismissFinalRoundInitiationNotice={() => setFinalRoundNoticeDismissed(true)}
-          />
-        </div>
-      )}
+      {/* --- AI Status Message Area --- ALWAYS VISIBLE */}
+      <div className="text-center mb-4 p-3 bg-white border border-gray-200 text-gray-800 rounded-lg shadow-sm w-full max-w-2xl mx-auto">
+        <h4 className="text-sm font-medium text-gray-500 mb-1 tracking-wider">MY TURN, HUMAN!</h4>
+        <p className="font-semibold text-lg min-h-[1.75rem]">
+          {aiStatusMessage || "—"}
+        </p>
+      </div>
+
+      {/* Score Table */}
+      <div className="w-full max-w-4xl mt-4 mb-6"> {/* Outer wrapper */}
+        {playerNames.length > 0 && playerStates.length > 0 && (
+          <div className="w-full max-w-2xl mx-auto"> {/* Inner wrapper - ADDED mx-auto HERE */}
+            <FarkleScoreTable 
+              players={playerNames}
+              turnScores={playerStates.map(ps => ps.scores.map(s => s ?? null))} 
+              playerTotals={playerTotals} 
+              isPlayerOnBoard={isPlayerOnBoard} 
+              currentPlayerIndex={currentPlayerIndex}
+              actualCurrentTurnIndex={actualCurrentTurnIndex}
+              displayedTurnCount={displayTurnCount}
+              currentTurnInput=""
+              gameOver={gameOver}
+              liveTurnScore={currentTurnTotal}
+              isFarkleTurn={isFarkle}
+              onInputChange={() => {}}
+              onBankScore={() => {}}
+              minimumToGetOnBoard={MINIMUM_TO_GET_ON_BOARD}
+              showFinalTallyModal={false} 
+              winningPlayerName={winningPlayerName}
+              gameMessage={null}
+              winningScore={WINNING_SCORE}
+              onCloseFinalTallyModal={() => { 
+                console.log("Final tally modal closed by user. Resetting game with same players.");
+                handleResetGameSamePlayers(); // Call the reset function
+              }} 
+              showRulesModal={showRulesModal} 
+              onToggleRulesModal={toggleShowRulesModal}
+              scoreEntryMode="auto"
+              isComputerThinking={playerNames[currentPlayerIndex] === 'Computer' && isComputerThinking} // Pass this down
+              showFinalRoundModal={showFinalRoundModal} // Pass down the state controlling the main final round modal
+              onEditBankedScore={() => {}} 
+              showConfirmModal={false} 
+              onConfirmScoreChange={() => {}} 
+              onCancelScoreEdit={() => {}} 
+              editModalValue="" 
+              onEditModalValueChange={() => {}} 
+              selectedCellToEdit={null} 
+              showFinalRoundInitiationNotice={false} // Ensure this is false
+              finalRoundInitiationMessage={null} // Can be nulled out as it won't show
+              onDismissFinalRoundInitiationNotice={handleDismissFinalRoundNotice} // Keep for safety, though modal won't show
+            />
+          </div>
+        )}
+      </div>
 
       {/* Container for reset buttons - constraining width and centering */}
-      <div className="mt-8 w-full max-w-md mx-auto flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-4 sm:px-0">
+      <div className="mt-3 mb-1 w-full max-w-md mx-auto flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-4 sm:px-0">
         <Button 
           onClick={handleResetGameSamePlayers} 
           // Ensuring full width on mobile, auto on larger screens within the flex row
@@ -1446,6 +1594,72 @@ function FarklePvPPageContent() {
           New Game, New Players
         </Button>
       </div>
+
+      {/* Final Round Initiation Notice Modal */}
+      {showFinalRoundModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-[100]">
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-8 rounded-xl shadow-2xl text-white max-w-md mx-4 transform transition-all duration-300 ease-out scale-100">
+            <h2 className="text-3xl font-bold mb-6 text-center">Final Round!</h2>
+            <p className="mb-6 text-lg text-center leading-relaxed">
+              {finalRoundTriggeredBy !== null && playerNames[finalRoundTriggeredBy] ?
+                (playerNames[finalRoundTriggeredBy] !== 'Computer' ?
+                  `Congratulations, ${playerNames[finalRoundTriggeredBy]}! You've reached ${WINNING_SCORE} points! The Computer gets one more turn to try and beat your score.` :
+                  `${playerNames[finalRoundTriggeredBy]} has reached ${WINNING_SCORE} points! You get one more turn to improve your score. Good luck!`
+                ) : "The final round has begun!"}
+            </p>
+            <Button
+              onClick={handleDismissFinalRoundNotice}
+              className="w-full bg-white text-indigo-600 hover:bg-indigo-50 focus:ring-2 focus:ring-white focus:ring-opacity-75 py-3 text-lg font-semibold rounded-lg shadow-md transition-transform duration-150 hover:scale-105"
+            >
+              Okay
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Game Over Modal */}
+      {showGameOverModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-[100]">
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-8 rounded-xl shadow-2xl text-white max-w-md mx-4 transform transition-all duration-300 ease-out scale-100">
+            <h2 className="text-3xl font-bold mb-6 text-center">Game Over!</h2>
+            <p className="mb-6 text-lg text-center leading-relaxed">
+              {winningPlayerName ?
+                `${winningPlayerName} wins the game!` :
+                "The game has ended."}
+              {/* Display scores if available */}
+              {playerNames.map((name, index) => (
+                <span key={index} className="block text-sm mt-1">
+                  {name}: {playerStates[index]?.total || 0} points
+                </span>
+              ))}
+            </p>
+            <Button
+              onClick={() => {
+                setShowGameOverModal(false); // Hide modal first
+                handleResetGameSamePlayers();
+              }}
+              className="w-full bg-white text-indigo-600 hover:bg-indigo-50 focus:ring-2 focus:ring-white focus:ring-opacity-75 py-3 text-lg font-semibold rounded-lg shadow-md transition-transform duration-150 hover:scale-105 mt-4"
+            >
+              Play Again (Same Players)
+            </Button>
+            <Button
+              onClick={() => {
+                setShowGameOverModal(false); // Hide modal first
+                handleResetGameToNewPlayers(); 
+              }}
+              className="w-full bg-transparent border border-white text-white hover:bg-white hover:text-indigo-600 focus:ring-2 focus:ring-white focus:ring-opacity-75 py-3 text-lg font-semibold rounded-lg shadow-md transition-transform duration-150 hover:scale-105 mt-3"
+            >
+              New Game (Different Players)
+            </Button>
+            <Button
+              onClick={() => router.push('/')} // Navigate to homepage or game selection
+              className="w-full bg-transparent text-white hover:bg-white/20 focus:ring-2 focus:ring-white focus:ring-opacity-50 py-3 text-sm font-medium rounded-lg mt-3"
+            >
+              Back to Game Selection
+            </Button>
+          </div>
+        </div>
+      )}
 
       <UniversalFooter />
 

@@ -51,6 +51,8 @@ interface FarkleScoreTableProps {
   finalRoundInitiationMessage: string | null;
   onDismissFinalRoundInitiationNotice: () => void;
   scoreEntryMode?: 'manual' | 'auto'; // New prop for input mode
+  isComputerThinking?: boolean; // Added prop
+  showFinalRoundModal?: boolean; // Added prop for the main modal state
 }
 
 export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
@@ -89,6 +91,8 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
   liveTurnScore,
   isFarkleTurn,
   scoreEntryMode = 'auto', // Default to auto if not specified
+  isComputerThinking,
+  showFinalRoundModal,
 }) => {
   // --- Add Log --- 
   console.log("[FarkleScoreTable] Received props: turnScores:", JSON.stringify(turnScores), " liveTurnScore:", liveTurnScore, " isFarkleTurn:", isFarkleTurn, " scoreEntryMode: ", scoreEntryMode);
@@ -234,6 +238,13 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                     const cellScoreValue = turnScores[playerIdx]?.[turnIndex];
                     const canEditCell = cellScoreValue !== null && cellScoreValue !== undefined && !isActiveInputCell && !gameOver;
 
+                    // Determine if this cell should render live input based on computer thinking state AND if the final round modal is active
+                    const renderAsLiveInput = isActiveInputCell && 
+                                              !showFinalRoundModal && // Do not render live input if the main final round modal is showing
+                                              (scoreEntryMode === 'manual' || 
+                                               (players[playerIdx] !== 'Computer') || 
+                                               (players[playerIdx] === 'Computer' && isComputerThinking));
+
                     // --- Add Cell Log ---
                     if (isActiveInputCell) {
                       console.log(`[FarkleScoreTable Cell Render] Player ${playerIdx}, Turn ${turnIndex + 1}: isActiveInputCell=${isActiveInputCell}, liveTurnScore=${liveTurnScore}, isFarkleTurn=${isFarkleTurn}`);
@@ -254,34 +265,27 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                           }
                         }}
                       >
-                        {
-                          isActiveInputCell ? (
-                            scoreEntryMode === 'manual' ? (
-                              <Input
-                                ref={inputRef}
-                                type="tel"
-                                inputMode="numeric"
-                                pattern="\d*"
-                                value={currentTurnInput}
-                                onChange={(e) => onInputChange(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                onBlur={handleInputBlur}
-                                autoFocus
-                                className={`w-full h-full text-center text-lg font-bold ${hideSpinnerClass} bg-white text-blue-600 border-2 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-md p-0`}
-                              />
+                        {/* Conditional Rendering for Active Cell */}
+                        {renderAsLiveInput ? (
+                          <>
+                            {isFarkleTurn ? (
+                              <span className="text-red-500 font-bold">F#*KLED!</span>
+                            ) : liveTurnScore > 0 ? (
+                              <span className="text-blue-600 font-bold">{liveTurnScore}</span>
                             ) : (
-                              // Auto mode (for PvP game)
-                              <span className={`block w-full h-full flex items-center justify-center text-lg font-bold py-1 ${isFarkleTurn ? 'text-red-500' : 'text-blue-600'} rounded-md`}>
-                                {isFarkleTurn ? 'F#*KLED!' : (liveTurnScore > 0 ? liveTurnScore : '-')}
-                              </span>
-                            )
-                          ) : (
-                            // Non-active cell
-                            <span className={`block w-full h-full flex items-center justify-center text-lg py-1 ${canEditCell ? 'cursor-pointer hover:bg-yellow-100 rounded-md transition-colors duration-150' : ''}`}>
-                               {cellScoreValue === 0 ? <span className="text-red-500 font-bold">F#*KLED!</span> : (cellScoreValue !== null && cellScoreValue !== undefined ? cellScoreValue : '' )}
-                            </span>
-                          )
-                        }
+                              <span className="text-gray-500">—</span>
+                            )}
+                          </>
+                        ) : cellScoreValue !== null && cellScoreValue !== undefined ? (
+                          <span 
+                            className={`${canEditCell ? 'cursor-pointer hover:bg-yellow-100 p-1 rounded' : ''} ${cellScoreValue === 0 ? 'text-orange-500 font-semibold' : ''}`}
+                            onClick={canEditCell ? () => onEditBankedScore(playerIdx, turnIndex) : undefined}
+                          >
+                            {cellScoreValue === 0 ? 'F#*KLED!' : cellScoreValue}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300"></span> // Empty or future placeholder
+                        )}
                       </td>
                     );
                   })}
