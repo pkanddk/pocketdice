@@ -95,7 +95,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
   showFinalRoundModal,
 }) => {
   // --- Add Log --- 
-  console.log("[FarkleScoreTable] Received props: turnScores:", JSON.stringify(turnScores), " liveTurnScore:", liveTurnScore, " isFarkleTurn:", isFarkleTurn, " scoreEntryMode: ", scoreEntryMode);
+  // console.log("[FarkleScoreTable] Received props: turnScores:", JSON.stringify(turnScores), " liveTurnScore:", liveTurnScore, " isFarkleTurn:", isFarkleTurn, " scoreEntryMode: ", scoreEntryMode);
   // --------------- 
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -234,22 +234,34 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                   {players.map((_, playerIdx) => {
                     const isCurrentPlayerCell = playerIdx === currentPlayerIndex;
                     const isCurrentTurnCell = turnIndex === actualCurrentTurnIndex;
-                    const isActiveInputCell = isCurrentPlayerCell && isCurrentTurnCell && !gameOver;
+                    // const isActiveInputCellFramework = isCurrentPlayerCell && isCurrentTurnCell && !gameOver; // Removed logging variable
+                    
+                    // --- Add Cell Log --- 
+                    // console.log(`Cell: P${playerIdx}, T${turnIndex}`, {
+                    //   isCurrentPlayerCell: isCurrentPlayerCell,
+                    //   isCurrentTurnCell: isCurrentTurnCell,
+                    //   pIdx: playerIdx,
+                    //   cpIdx: currentPlayerIndex,
+                    //   tIdx: turnIndex,
+                    //   actualCurrentTIdx: actualCurrentTurnIndex,
+                    //   gameOver: gameOver,
+                    //   showFinalRoundModal: showFinalRoundModal,
+                    //   scoreEntryMode: scoreEntryMode,
+                    //   playersPIdxName: players[playerIdx]
+                    // });
+                    
+                    const isActiveInputCell = isCurrentPlayerCell && isCurrentTurnCell && !gameOver; // Proper declaration for use
+
                     const cellScoreValue = turnScores[playerIdx]?.[turnIndex];
                     const canEditCell = cellScoreValue !== null && cellScoreValue !== undefined && !isActiveInputCell && !gameOver;
 
-                    // Determine if this cell should render live input based on computer thinking state AND if the final round modal is active
                     const renderAsLiveInput = isActiveInputCell && 
-                                              !showFinalRoundModal && // Do not render live input if the main final round modal is showing
+                                              !showFinalRoundModal && 
                                               (scoreEntryMode === 'manual' || 
                                                (players[playerIdx] !== 'Computer') || 
                                                (players[playerIdx] === 'Computer' && isComputerThinking));
 
-                    // --- Add Cell Log ---
-                    if (isActiveInputCell) {
-                      console.log(`[FarkleScoreTable Cell Render] Player ${playerIdx}, Turn ${turnIndex + 1}: isActiveInputCell=${isActiveInputCell}, liveTurnScore=${liveTurnScore}, isFarkleTurn=${isFarkleTurn}`);
-                    }
-                    // ---------------------
+                    // console.log(`Cell: P${playerIdx}, T${turnIndex} - isActiveInputCell: ${isActiveInputCell}, renderAsLiveInput: ${renderAsLiveInput}, player: ${players[playerIdx]}, scoreEntryMode: ${scoreEntryMode}`);
 
                     return (
                       <td 
@@ -267,15 +279,22 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                       >
                         {/* Conditional Rendering for Active Cell */}
                         {renderAsLiveInput ? (
-                          <>
-                            {isFarkleTurn ? (
-                              <span className="text-red-500 font-bold">F#*KLED!</span>
-                            ) : liveTurnScore > 0 ? (
-                              <span className="text-blue-600 font-bold">{liveTurnScore}</span>
-                            ) : (
-                              <span className="text-gray-500">—</span>
-                            )}
-                          </>
+                          <Input
+                            ref={inputRef}
+                            type="number"
+                            value={currentTurnInput}
+                            onChange={(e) => onInputChange(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            onBlur={handleInputBlur}
+                            className={`w-full h-full text-center text-lg p-1 border-2 ${hideSpinnerClass} ${
+                              parseInt(currentTurnInput, 10) === 0 && currentTurnInput.length > 0
+                                ? 'border-red-500 focus:border-red-700'
+                                : 'border-blue-300 focus:border-blue-500'
+                            } !bg-white rounded-md shadow-inner`}
+                            placeholder="0"
+                            autoFocus
+                            min="0"
+                          />
                         ) : cellScoreValue !== null && cellScoreValue !== undefined ? (
                           <span 
                             className={`${canEditCell ? 'cursor-pointer hover:bg-yellow-100 p-1 rounded' : ''} ${cellScoreValue === 0 ? 'text-orange-500 font-semibold' : ''}`}
