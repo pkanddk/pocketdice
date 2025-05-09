@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useState } from 'react';
-import { Dice5, ChevronDown } from "lucide-react";
+import { Dice5, ChevronDown, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface GameModeSelectorProps {
@@ -14,24 +14,25 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
   const [open, setOpen] = useState(false);
   const [yahtzeeOpen, setYahtzeeOpen] = useState(false);
   const [yahtzeeFullGameOpen, setYahtzeeFullGameOpen] = useState(false);
+  const [yahtzeeScoreCardOpen, setYahtzeeScoreCardOpen] = useState(false);
   const [farkleOpen, setFarkleOpen] = useState(false);
   const [farkleFullGameOpen, setFarkleFullGameOpen] = useState(false);
+  const [farkleScoreCardOpen, setFarkleScoreCardOpen] = useState(false);
   const [backgammonOpen, setBackgammonOpen] = useState(false);
+  const [generalScoreCardOpen, setGeneralScoreCardOpen] = useState(false);
 
-  // Function to handle game selection
-  const handleGameSelect = (gameMode: string, playerCount?: number) => {
+  // Function to handle game selection - Simplified
+  const handleGameSelect = (gameMode: string) => {
     setOpen(false);
     setYahtzeeOpen(false);
     setYahtzeeFullGameOpen(false);
+    setYahtzeeScoreCardOpen(false);
     setFarkleOpen(false);
     setFarkleFullGameOpen(false);
+    setFarkleScoreCardOpen(false);
     setBackgammonOpen(false);
-    
-    if ((gameMode.startsWith('farkle-pvp') || gameMode.startsWith('yahtzee-pvp')) && playerCount) {
-      onSelectGameMode(`${gameMode}-${playerCount}`);
-    } else {
-      onSelectGameMode(gameMode);
-    }
+    setGeneralScoreCardOpen(false);
+    onSelectGameMode(gameMode); // Always pass the full gameMode string
   };
 
   // Toggle Yahtzee category
@@ -39,16 +40,26 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
     const currentlyYahtzeeOpen = yahtzeeOpen;
     setYahtzeeOpen(!currentlyYahtzeeOpen);
     setYahtzeeFullGameOpen(false);
+    setYahtzeeScoreCardOpen(false);
     if (!currentlyYahtzeeOpen) {
       setFarkleOpen(false);
-      setBackgammonOpen(false);
       setFarkleFullGameOpen(false);
+      setFarkleScoreCardOpen(false);
+      setBackgammonOpen(false);
+      setGeneralScoreCardOpen(false);
     }
   };
 
   // Toggle Yahtzee Full Game submenu
   const toggleYahtzeeFullGame = () => {
     setYahtzeeFullGameOpen(!yahtzeeFullGameOpen);
+    setYahtzeeScoreCardOpen(false);
+  };
+
+  // NEW: Toggle Yahtzee Score Card submenu
+  const toggleYahtzeeScoreCard = () => {
+    setYahtzeeScoreCardOpen(!yahtzeeScoreCardOpen);
+    setYahtzeeFullGameOpen(false);
   };
 
   // Toggle Farkle category
@@ -56,15 +67,50 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
     const currentlyFarkleOpen = farkleOpen;
     setFarkleOpen(!currentlyFarkleOpen);
     setFarkleFullGameOpen(false);
+    setFarkleScoreCardOpen(false);
     if (!currentlyFarkleOpen) {
       setYahtzeeOpen(false);
+      setYahtzeeFullGameOpen(false);
+      setYahtzeeScoreCardOpen(false);
       setBackgammonOpen(false);
+      setGeneralScoreCardOpen(false);
     }
   };
 
   // Toggle Farkle Full Game submenu
   const toggleFarkleFullGame = () => {
     setFarkleFullGameOpen(!farkleFullGameOpen);
+    setFarkleScoreCardOpen(false);
+  };
+
+  // NEW: Toggle Farkle Score Card submenu
+  const toggleFarkleScoreCard = () => {
+    setFarkleScoreCardOpen(!farkleScoreCardOpen);
+    setFarkleFullGameOpen(false);
+  };
+  
+  // Toggle Backgammon category
+  const toggleBackgammon = () => {
+    const currentlyBackgammonOpen = backgammonOpen;
+    setBackgammonOpen(!currentlyBackgammonOpen);
+    if (!currentlyBackgammonOpen) {
+        setYahtzeeOpen(false);
+        setFarkleOpen(false);
+        setGeneralScoreCardOpen(false);
+    }
+  };
+
+  // Toggle General Score Card category - NEW
+  const toggleGeneralScoreCard = () => {
+    const currentlyGeneralOpen = generalScoreCardOpen;
+    setGeneralScoreCardOpen(!currentlyGeneralOpen);
+    if (!currentlyGeneralOpen) {
+      setYahtzeeOpen(false);
+      setFarkleOpen(false);
+      setBackgammonOpen(false);
+      setYahtzeeFullGameOpen(false); // Ensure other sub-submenus are closed
+      setFarkleFullGameOpen(false);
+    }
   };
 
   return (
@@ -76,7 +122,7 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
       {/* Main Button */}
       <Button 
         variant="outline" 
-        className="w-full justify-between pl-10 h-auto py-3 text-lg rounded-full border-blue-200 bg-blue-50/50 hover:bg-blue-50 focus:border-blue-500 focus:ring-blue-500"
+        className="w-full justify-between pl-10 h-12 text-lg rounded-full border-blue-200 bg-blue-50/50 hover:bg-blue-50 focus:border-blue-500 focus:ring-blue-500"
         onClick={() => setOpen(!open)}
       >
         {currentSelectionName || "Select Game Mode"}
@@ -93,8 +139,8 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
               onClick={toggleYahtzee}
             >
               <div className="flex flex-col items-start text-left">
-                <span className="font-semibold text-blue-700 text-lg">Yahtzee</span>
-                <span className="text-sm text-gray-500">Classic dice game</span>
+                <span className="font-semibold text-blue-700 text-lg">The Yacht Game</span>
+                <span className="text-sm text-gray-500">Invented by a couple who played it on their yacht.</span>
               </div>
               <ChevronDown className={`h-5 w-5 text-blue-500 transition-transform ${yahtzeeOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -102,15 +148,35 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
             {/* Yahtzee Submenu (Vertical) */}
             {yahtzeeOpen && (
               <div className="bg-blue-50/70 border-t border-b border-blue-100">
-                <button 
-                  className="w-full py-4 px-8 hover:bg-blue-100 focus:bg-blue-100 text-left"
-                  onClick={() => handleGameSelect('score-card')}
+                {/* Yahtzee Score Card - Toggles Submenu */}
+                <button
+                  className="w-full py-4 px-8 hover:bg-blue-100 focus:bg-blue-100 text-left flex justify-between items-center"
+                  onClick={toggleYahtzeeScoreCard}
                 >
                   <div className="flex flex-col">
                     <span className="font-semibold text-blue-700 text-lg">Score Card</span>
-                    <span className="text-sm text-gray-500">Digital score card.</span>
                   </div>
+                  <ChevronDown className={`h-5 w-5 text-blue-500 transition-transform ${yahtzeeScoreCardOpen ? 'rotate-180' : ''}`} />
                 </button>
+
+                {/* Yahtzee Score Card Submenu (Player Count Options) */}
+                {yahtzeeScoreCardOpen && (
+                  <div className="bg-blue-50/70 border-t border-b border-blue-200 pl-4">
+                    {[2, 3, 4, 5, 6, 7, 8].map((num) => (
+                      <React.Fragment key={`yahtzee-score-card-${num}`}>
+                        <button
+                          className="w-full py-3 px-8 hover:bg-blue-100 focus:bg-blue-100 text-left text-center"
+                          onClick={() => handleGameSelect(`yahtzee-score-card-${num}`)}
+                        >
+                          <div className="flex flex-col items-center">
+                            <span className="font-semibold text-blue-700 text-md">{num} Players</span>
+                          </div>
+                        </button>
+                        {num < 8 && <div className="border-t border-blue-200/50"></div>}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                )}
                 
                 <div className="border-t border-blue-100/50"></div>
 
@@ -121,7 +187,6 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
                 >
                   <div className="flex flex-col">
                     <span className="font-semibold text-blue-700 text-lg">Full Game</span>
-                    <span className="text-sm text-gray-500">Play against others or AI.</span>
                   </div>
                   <ChevronDown className={`h-5 w-5 text-blue-500 transition-transform ${yahtzeeFullGameOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -134,7 +199,7 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
                       onClick={() => handleGameSelect('single')}
                     >
                       <div className="flex flex-col items-center">
-                        <span className="font-semibold text-blue-700 text-md">Player vs. Machine</span>
+                        <span className="font-semibold text-blue-700 text-md">Player vs. Computer</span>
                       </div>
                     </button>
                     <div className="border-t border-blue-200/50"></div>
@@ -142,7 +207,7 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
                       <React.Fragment key={`yahtzee-pvp-${num}`}>
                         <button
                           className="w-full py-3 px-8 hover:bg-blue-100 focus:bg-blue-100 text-left text-center"
-                          onClick={() => handleGameSelect('yahtzee-pvp', num)}
+                          onClick={() => handleGameSelect(`yahtzee-pvp-${num}`)}
                         >
                           <div className="flex flex-col items-center">
                             <span className="font-semibold text-blue-700 text-md">{num} Players</span>
@@ -167,7 +232,7 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
             >
               <div className="flex flex-col items-start text-left">
                 <span className="font-semibold text-blue-700 text-lg">F#*kle</span>
-                <span className="text-sm text-gray-500">Roll and risk dice game</span>
+                <span className="text-sm text-gray-500">The probability of rolling a no scoring combination is 2.31% </span>
               </div>
               <ChevronDown className={`h-5 w-5 text-blue-500 transition-transform ${farkleOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -175,16 +240,35 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
             {/* Farkle Submenu (Vertical) */}
             {farkleOpen && (
               <div className="bg-blue-50/70 border-t border-b border-blue-100">
-                {/* Farkle Score Card Button - Should be a direct option */}
+                {/* Farkle Score Card - Toggles Submenu */}
                 <button
-                  className="w-full py-4 px-8 hover:bg-blue-100 focus:bg-blue-100 text-left"
-                  onClick={() => handleGameSelect('farkle-scorecard')}
+                  className="w-full py-4 px-8 hover:bg-blue-100 focus:bg-blue-100 text-left flex justify-between items-center"
+                  onClick={toggleFarkleScoreCard}
                 >
                   <div className="flex flex-col">
                     <span className="font-semibold text-blue-700 text-lg">Score Card</span>
-                    <span className="text-sm text-gray-500">Digital score card.</span>
                   </div>
+                  <ChevronDown className={`h-5 w-5 text-blue-500 transition-transform ${farkleScoreCardOpen ? 'rotate-180' : ''}`} />
                 </button>
+
+                {/* Farkle Score Card Submenu (Player Count Options) */}
+                {farkleScoreCardOpen && (
+                  <div className="bg-blue-50/70 border-t border-b border-blue-200 pl-4">
+                    {[2, 3, 4, 5, 6, 7, 8].map((num) => (
+                      <React.Fragment key={`farkle-scorecard-${num}`}>
+                        <button
+                          className="w-full py-3 px-8 hover:bg-blue-100 focus:bg-blue-100 text-left text-center"
+                          onClick={() => handleGameSelect(`farkle-scorecard-${num}`)}
+                        >
+                          <div className="flex flex-col items-center">
+                            <span className="font-semibold text-blue-700 text-md">{num} Players</span>
+                          </div>
+                        </button>
+                        {num < 8 && <div className="border-t border-blue-200/50"></div>}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                )}
 
                 <div className="border-t border-blue-100/50"></div>
 
@@ -195,7 +279,6 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
                 >
                   <div className="flex flex-col">
                     <span className="font-semibold text-blue-700 text-lg">Full Game</span>
-                    <span className="text-sm text-gray-500">Play against others or AI.</span>
                   </div>
                   <ChevronDown className={`h-5 w-5 text-blue-500 transition-transform ${farkleFullGameOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -216,7 +299,7 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
                       <React.Fragment key={`farkle-pvp-${num}`}>
                         <button
                           className="w-full py-3 px-8 hover:bg-blue-100 focus:bg-blue-100 text-left text-center"
-                          onClick={() => handleGameSelect('farkle-pvp', num)}
+                          onClick={() => handleGameSelect(`farkle-pvp-${num}`)}
                         >
                           <div className="flex flex-col items-center">
                             <span className="font-semibold text-blue-700 text-md">{num} Players</span>
@@ -233,22 +316,15 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
 
           <div className="border-t border-blue-100"></div>
           
-          {/* Backgammon Category */}
+          {/* Backgammon Category - Moved General Score Card After This */}
           <div className="w-full">
             <button 
               className="w-full py-4 px-5 hover:bg-blue-50 focus:bg-blue-50 flex justify-between items-center"
-              onClick={() => {
-                const currentlyBackgammonOpen = backgammonOpen;
-                setBackgammonOpen(!currentlyBackgammonOpen);
-                if (!currentlyBackgammonOpen) {
-                  setYahtzeeOpen(false);
-                  setFarkleOpen(false);
-                }
-              }}
+              onClick={toggleBackgammon}
             >
               <div className="flex flex-col items-start text-left">
                 <span className="font-semibold text-blue-700 text-lg">Backgammon</span>
-                <span className="text-sm text-gray-500">Classic board game</span>
+                <span className="text-sm text-gray-500">Emperor Nero played it for $10,000 per game (in today's currency).</span>
               </div>
               <ChevronDown className={`h-5 w-5 text-blue-500 transition-transform ${backgammonOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -258,11 +334,10 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
               <div className="bg-blue-50/70 border-t border-b border-blue-100">
                 <button 
                   className="w-full py-4 px-8 hover:bg-blue-100 focus:bg-blue-100 text-left"
-                  onClick={() => handleGameSelect('backgammon')}
+                  onClick={() => handleGameSelect('backgammon-pvp')}
                 >
                   <div className="flex flex-col">
                     <span className="font-semibold text-blue-700 text-lg">Player vs Player</span>
-                    <span className="text-sm text-gray-500">Full game, board included.</span>
                   </div>
                 </button>
                 
@@ -276,12 +351,49 @@ export function GameModeSelector({ onSelectGameMode, currentSelectionName }: Gam
                       <span className="font-semibold text-gray-600 text-lg">Player vs Computer</span>
                       <span className="ml-2 text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">Coming Soon</span>
                     </div>
-                    <span className="text-sm text-gray-500">Play against AI.</span>
                   </div>
                 </button>
               </div>
             )}
           </div>
+
+          {/* General Score Card Category - MOVED TO BOTTOM */}
+          <div className="border-t border-blue-100"></div> {/* Separator */}
+          <div className="w-full">
+            <button 
+              className="w-full py-4 px-5 hover:bg-blue-50 focus:bg-blue-50 flex justify-between items-center"
+              onClick={toggleGeneralScoreCard}
+            >
+              <div className="flex items-center text-left">
+                {/* <ListChecks className="h-5 w-5 text-blue-500 mr-3" /> Icon Removed */}
+                <div className="flex flex-col">
+                  <span className="font-semibold text-blue-700 text-lg">General Score Card</span>
+                  <span className="text-sm text-gray-500">Use this for any game you play!</span>
+                </div>
+              </div>
+              <ChevronDown className={`h-5 w-5 text-blue-500 transition-transform ${generalScoreCardOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {/* General Score Card Submenu (Player Count) */}
+            {generalScoreCardOpen && (
+              <div className="bg-blue-50/70 border-t border-b border-blue-200 pl-4">
+                {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                  <React.Fragment key={`general-scorecard-${num}`}>
+                    <button
+                      className="w-full py-3 px-8 hover:bg-blue-100 focus:bg-blue-100 text-left text-center"
+                      onClick={() => handleGameSelect(`general-scorecard-${num}`)}
+                    >
+                      <div className="flex flex-col items-center">
+                        <span className="font-semibold text-blue-700 text-md">{num} Players</span>
+                      </div>
+                    </button>
+                    {num < 10 && <div className="border-t border-blue-200/50"></div>}
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
       )}
     </div>
