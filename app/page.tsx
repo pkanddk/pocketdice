@@ -18,13 +18,12 @@ const OPPONENT_COMPUTER = "computer";
 // Update display names for Yahtzee modes
 const GAME_MODE_DISPLAY_NAMES: { [key: string]: string } = {
   'single': "Yahtzee - Player vs A.I.",
-  'score-card': "Yahtzee - Score Card",
-  'duel': "Yahtzee - Player vs Player",
   'yahtzee-pvp': "Yahtzee - Player vs Player",
   'farkle-pvp': "Farkle - Player vs Player",
-  'farkle-scorecard': "Farkle - Score Card",
   'farkle-pvc': "Farkle - Player vs Computer",
-  [BACKGAMMON_MODE_KEY]: "Backgammon",
+  'backgammon-pvp': "Backgammon - Player vs Player",
+  'backgammon-pvc': "Backgammon - Player vs Computer",
+  'general-scorecard': "General Score Card",
 };
 
 // Dynamically add display names for Farkle PvP with player counts
@@ -35,6 +34,21 @@ for (let i = 2; i <= 8; i++) {
 // Dynamically add display names for Yahtzee PvP with player counts
 for (let i = 2; i <= 8; i++) {
   GAME_MODE_DISPLAY_NAMES[`yahtzee-pvp-${i}`] = `Yahtzee - ${i} Players`;
+}
+
+// Dynamically add display names for General Score Card with player counts
+for (let i = 2; i <= 10; i++) {
+  GAME_MODE_DISPLAY_NAMES[`general-scorecard-${i}`] = `General Score Card - ${i} Players`;
+}
+
+// NEW: Dynamically add display names for Yahtzee Score Card with player counts
+for (let i = 2; i <= 8; i++) {
+  GAME_MODE_DISPLAY_NAMES[`yahtzee-score-card-${i}`] = `Yahtzee - Score Card - ${i} Players`;
+}
+
+// NEW: Dynamically add display names for Farkle Score Card with player counts
+for (let i = 2; i <= 8; i++) {
+  GAME_MODE_DISPLAY_NAMES[`farkle-scorecard-${i}`] = `Farkle - Score Card - ${i} Players`;
 }
 
 // Add a helper function to generate properly encoded Backgammon game links
@@ -49,40 +63,40 @@ export default function HomePage() {
   const [playerCount, setPlayerCount] = useState<number>(2)
   const [playerNames, setPlayerNames] = useState<string[]>([''])
   const [backgammonOpponentType, setBackgammonOpponentType] = useState<string>(OPPONENT_PLAYER);
-  // Initialize selectedGameModeName to empty string
   const [selectedGameModeName, setSelectedGameModeName] = useState<string>("");
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   useEffect(() => {
     let requiredLength = 0;
-    let currentSelectedPlayerCount = playerCount; 
-
-    if (gameMode.startsWith('farkle-pvp-')) {
-      // This logic might be redundant if handleSelectGameMode correctly sets gameMode to base and playerCount
-    } else if (gameMode.startsWith('yahtzee-pvp-')) {
-      // This logic might be redundant if handleSelectGameMode correctly sets gameMode to base and playerCount
+    
+    if (gameMode === 'single' || gameMode === 'farkle-pvc') { 
+      requiredLength = 1;
+    } else if (gameMode === 'backgammon-pvp') {
+      requiredLength = 2;
+    } else if (gameMode === 'backgammon-pvc') {
+      requiredLength = 1;
+    } else if (gameMode === 'score-card' || 
+               gameMode === 'farkle-pvp' || 
+               gameMode === 'farkle-scorecard' || 
+               gameMode === 'yahtzee-pvp' || 
+               gameMode === 'general-scorecard') {
+      requiredLength = playerCount;
     }
 
-    if (gameMode !== BACKGAMMON_MODE_KEY) {
-      if (gameMode === 'single' || gameMode === 'farkle-pvc') { 
-        requiredLength = 1;
-      } else if (gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'farkle-pvp' || gameMode === 'farkle-scorecard' || gameMode === 'yahtzee-pvp') {
-        requiredLength = playerCount;
-      }
-      // Reset opponent type if switching away from Backgammon
-      if (backgammonOpponentType !== OPPONENT_PLAYER) {
-          setBackgammonOpponentType(OPPONENT_PLAYER);
-      }
-    } else { // Backgammon selected
-      requiredLength = backgammonOpponentType === OPPONENT_COMPUTER ? 1 : 2;
+    // Reset opponent type if switching away from Backgammon modes that use it
+    if (gameMode !== 'backgammon-pvp' && gameMode !== 'backgammon-pvc' && backgammonOpponentType !== OPPONENT_PLAYER) {
+        // This condition might need review based on how/if backgammonOpponentType is used elsewhere
+        // For now, if not a backgammon mode that implies opponent type, reset to player.
+        // setBackgammonOpponentType(OPPONENT_PLAYER); // Potentially not needed if only set by specific modes
     }
 
-    // Adjust playerNames array
     setPlayerNames((currentNames) => {
         const newNames = Array(requiredLength).fill('');
         for (let i = 0; i < Math.min(requiredLength, currentNames.length); i++) {
             newNames[i] = currentNames[i] || '';
         }
+        // Remove the loop that sets default names like "Player 1"
+        // The placeholder attribute on the Input component will handle this.
         return newNames;
     });
 
@@ -120,10 +134,16 @@ export default function HomePage() {
   let numInputsToShow = 0;
   if (gameMode === 'single' || gameMode === 'farkle-pvc') { 
     numInputsToShow = 1;
-  } else if (gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'farkle-pvp' || gameMode === 'farkle-scorecard' || gameMode === 'yahtzee-pvp') {
+  } else if (gameMode === 'backgammon-pvp') {
+    numInputsToShow = 2;
+  } else if (gameMode === 'backgammon-pvc') {
+    numInputsToShow = 1;
+  } else if (gameMode === 'score-card' || 
+             gameMode === 'farkle-pvp' || 
+             gameMode === 'farkle-scorecard' || 
+             gameMode === 'yahtzee-pvp' || 
+             gameMode === 'general-scorecard') {
     numInputsToShow = playerCount;
-  } else if (gameMode === BACKGAMMON_MODE_KEY) {
-    numInputsToShow = backgammonOpponentType === OPPONENT_COMPUTER ? 1 : 2;
   }
 
   const isStartDisabled = !gameMode ||
@@ -135,32 +155,39 @@ export default function HomePage() {
       return; 
     }
 
-    // For farkle-pvp or farkle-pvc, numInputsToShow is derived from playerCount or 1 respectively
     const namesForRoute = playerNames.slice(0, numInputsToShow);
 
     if (gameMode === 'single') {
       router.push(`/game/single-player?name=${encodeURIComponent(namesForRoute[0] || '')}`);
-    } else if (gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'yahtzee-pvp') {
+    } else if (gameMode === 'score-card' || gameMode === 'yahtzee-pvp') {
+      // Yahtzee score card or PvP
       const route = gameMode === 'score-card' ? '/score-card' : `/game/${playerCount}`;
       router.push(`${route}?names=${encodeURIComponent(JSON.stringify(namesForRoute))}`);
     } else if (gameMode === 'farkle-scorecard') {
+      // Farkle score card
       const route = '/farkle-scorecard';
       const queryString = encodeURIComponent(JSON.stringify(namesForRoute));
       router.push(`${route}?names=${queryString}`);
-    } else if (gameMode === 'farkle-pvp') { // Handles all X-player Farkle games
+    } else if (gameMode === 'farkle-pvp') {
+      // Farkle PvP
       const route = '/farkle-pvp';
-      // playerNames has been adjusted by useEffect based on playerCount, which was set by handleSelectGameMode
-      const pvpNamesToPass = playerNames.slice(0, playerCount); 
+      const pvpNamesToPass = playerNames.slice(0, playerCount);
       const queryString = encodeURIComponent(JSON.stringify(pvpNamesToPass));
       router.push(`${route}?players=${queryString}`);
-    } else if (gameMode === 'farkle-pvc') { // New route for Farkle Player vs Computer
+    } else if (gameMode === 'farkle-pvc') {
+      // Farkle PvC
       const route = '/farkle-pvc';
-      // playerNames should have 1 element for PVC. Get the first name, default if empty.
       const humanPlayerName = playerNames[0] || "Player 1"; 
       router.push(`${route}?playerName=${encodeURIComponent(humanPlayerName)}&gameMode=farkle-pvc`);
-    } else if (gameMode === BACKGAMMON_MODE_KEY) {
+    } else if (gameMode === 'backgammon-pvp' || gameMode === 'backgammon-pvc') {
+      // Assumes getBackgammonLink correctly uses namesForRoute (1 for PvC, 2 for PvP)
+      // and the /backgammon page infers mode from number of names.
       const backgammonLink = getBackgammonLink(namesForRoute);
       router.push(backgammonLink);
+    } else if (gameMode === 'general-scorecard') {
+      const route = '/general-scorecard';
+      const queryString = encodeURIComponent(JSON.stringify(namesForRoute));
+      router.push(`${route}?names=${queryString}`);
     }
   }, [gameMode, playerCount, playerNames, router, backgammonOpponentType, isStartDisabled, numInputsToShow]);
 
@@ -191,7 +218,7 @@ export default function HomePage() {
 
   const handleSelectGameMode = useCallback((modeKey: string) => {
     let baseMode = modeKey;
-    let countFromMode = 0;
+    let countFromMode = 2; // Default player count if not specified
 
     if (modeKey.startsWith('farkle-pvp-')) {
       const parts = modeKey.split('-');
@@ -203,22 +230,64 @@ export default function HomePage() {
       countFromMode = parseInt(parts.pop() || '2', 10);
       baseMode = 'yahtzee-pvp';
       setPlayerCount(countFromMode);
+    } else if (modeKey.startsWith('general-scorecard-')) {
+      const parts = modeKey.split('-');
+      countFromMode = parseInt(parts.pop() || '2', 10);
+      baseMode = 'general-scorecard';
+      setPlayerCount(countFromMode);
+    } else if (modeKey.startsWith('yahtzee-score-card-')) {
+      const parts = modeKey.split('-');
+      countFromMode = parseInt(parts.pop() || '2', 10);
+      baseMode = 'score-card';
+      setPlayerCount(countFromMode);
+    } else if (modeKey.startsWith('farkle-scorecard-')) {
+      const parts = modeKey.split('-');
+      countFromMode = parseInt(parts.pop() || '2', 10);
+      baseMode = 'farkle-scorecard';
+      setPlayerCount(countFromMode);
     } else if (modeKey === 'farkle-pvc') {
       setPlayerCount(1); 
+      baseMode = modeKey;
     } else if (modeKey === 'single') {
       setPlayerCount(1);
-    } else if (modeKey !== 'score-card' && modeKey !== 'duel' && !modeKey.startsWith('farkle-') && !modeKey.startsWith('yahtzee-')) {
-        // This condition might need refinement to ensure it doesn't incorrectly reset playerCount for Yahtzee/Farkle scorecards
-        // if (modeKey === 'single') { // This inner check is now handled above
-        // }
+      baseMode = modeKey;
+    } else if (modeKey === 'backgammon-pvp') {
+      baseMode = 'backgammon-pvp';
+      setPlayerCount(2);
+      setBackgammonOpponentType(OPPONENT_PLAYER);
+    } else if (modeKey === 'backgammon-pvc') {
+      baseMode = 'backgammon-pvc';
+      setPlayerCount(1);
+      setBackgammonOpponentType(OPPONENT_COMPUTER);
+    } else {
+      // Handles modes like BACKGAMMON_MODE_KEY or any mode not matching above
+      baseMode = modeKey;
+      // For modes not explicitly setting playerCount (like Backgammon), set a default or let specific logic handle it.
+      // Most player-count sensitive modes are now handled by suffixes.
+      // If it's not a known suffixed type, and not single player, default to 2.
+      if (baseMode !== 'single' && baseMode !== 'farkle-pvc' && baseMode !== 'backgammon-pvp' && baseMode !== 'backgammon-pvc') {
+        // This case should ideally not be hit for modes that *should* have player counts
+        // as they should be selected with suffixes.
+        // If an old key like 'score-card' (without suffix) was somehow passed, this might apply.
+        setPlayerCount(2); 
+      }
     }
-
+    
     setGameMode(baseMode); 
     setSelectedGameModeName(GAME_MODE_DISPLAY_NAMES[modeKey] || GAME_MODE_DISPLAY_NAMES[baseMode] || "");
 
-    if (modeKey !== BACKGAMMON_MODE_KEY) {
-        setBackgammonOpponentType(OPPONENT_PLAYER);
+    // Explicitly manage backgammonOpponentType based on the selected mode
+    if (modeKey === 'backgammon-pvp') {
+      setBackgammonOpponentType(OPPONENT_PLAYER);
+    } else if (modeKey === 'backgammon-pvc') {
+      setBackgammonOpponentType(OPPONENT_COMPUTER);
+    } else if (baseMode !== 'backgammon-pvp' && baseMode !== 'backgammon-pvc') {
+      // If not a specific backgammon mode, reset or ensure opponent type is non-computer if that state is reused.
+      // For now, let's assume if it's not backgammon-pvc, it's not vs computer for backgammon context.
+      // If other modes might set OPPONENT_COMPUTER, this might need adjustment.
+      // setBackgammonOpponentType(OPPONENT_PLAYER); // Consider if this reset is broadly needed.
     }
+
   }, []);
 
   return (
@@ -266,62 +335,6 @@ export default function HomePage() {
                   currentSelectionName={selectedGameModeName}
               />
 
-              {(gameMode === 'score-card' || gameMode === 'duel' || gameMode === 'farkle-pvp' || gameMode === 'farkle-scorecard' || gameMode === 'yahtzee-pvp') && (
-                <div className="relative mt-4">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                    <Users className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <Select 
-                    onValueChange={(value) => setPlayerCount(parseInt(value))} 
-                    defaultValue="2"
-                    value={playerCount.toString()}
-                  >
-                    <SelectTrigger className="pl-10 h-auto py-3 text-lg rounded-full border-blue-200 bg-blue-50/50 hover:bg-blue-50 focus:border-blue-500 focus:ring-blue-500">
-                      <SelectValue placeholder="Choose number of players" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[2, 3, 4, 5, 6, 7, 8].map((num) => (
-                        <SelectItem key={num} value={num.toString()}>
-                          <div className="flex items-center justify-center">
-                            <span className="font-semibold">{num} Players</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {gameMode === BACKGAMMON_MODE_KEY && (
-                <div className="relative mt-4">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                    {backgammonOpponentType === OPPONENT_COMPUTER ? <Computer className="h-5 w-5 text-purple-500" /> : <Users className="h-5 w-5 text-green-500"/>}
-                  </div>
-                  <Select 
-                    value={backgammonOpponentType} 
-                    onValueChange={setBackgammonOpponentType}
-                  >
-                     <SelectTrigger className="pl-10 h-auto py-3 text-lg rounded-full border-blue-200 bg-blue-50/50 hover:bg-blue-50 focus:border-blue-500 focus:ring-blue-500">
-                      <SelectValue placeholder="Select opponent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value={OPPONENT_COMPUTER}>
-                           <div className="flex items-center">
-                             <Computer className="mr-2 h-5 w-5" /> 
-                             <span className="font-semibold">Play vs Computer</span>
-                          </div>
-                        </SelectItem>
-                         <SelectItem value={OPPONENT_PLAYER}>
-                           <div className="flex items-center">
-                            <Users className="mr-2 h-5 w-5" /> 
-                            <span className="font-semibold">Play vs Player</span>
-                          </div>
-                        </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
               <AnimatePresence>
                 {Array.from({ length: numInputsToShow }).map((_, index) => (
                   <motion.div
@@ -333,8 +346,7 @@ export default function HomePage() {
                   >
                     <Input
                       placeholder={
-                        gameMode === BACKGAMMON_MODE_KEY && 
-                        backgammonOpponentType === OPPONENT_COMPUTER && 
+                        gameMode === 'backgammon-pvc' &&
                         index === 1 
                           ? "Computer" 
                           : `Player ${index + 1}`
@@ -342,11 +354,10 @@ export default function HomePage() {
                       value={playerNames[index] || ''}
                       onChange={(e) => handleNameChange(index, e.target.value)}
                       disabled={
-                        gameMode === BACKGAMMON_MODE_KEY && 
-                        backgammonOpponentType === OPPONENT_COMPUTER && 
+                        gameMode === 'backgammon-pvc' &&
                         index === 1
                       }
-                      className="h-12 text-lg rounded-full border-blue-200 bg-blue-50/50 hover:bg-blue-50 focus:border-blue-500 focus:ring-blue-500 mb-2"
+                      className="w-full h-12 text-lg rounded-full border-blue-200 bg-blue-50/50 hover:bg-blue-50 focus:border-blue-500 focus:ring-blue-500 mb-2"
                     />
                   </motion.div>
                 ))}
