@@ -207,7 +207,7 @@ export const ScoreCardLogic: React.FC<ScoreCardLogicProps> = ({ players, isJerry
           finalTally={finalTally}
         />
       </div>
-      <div className="mt-6 sm:mt-10 text-center space-y-3 sm:space-y-0 sm:space-x-4">
+      <div className="mt-8 text-center space-y-3 sm:space-y-0 sm:space-x-4 mb-0">
         <Button
           onClick={resetGame}
           className={`w-full sm:w-auto ${
@@ -232,11 +232,6 @@ export const ScoreCardLogic: React.FC<ScoreCardLogicProps> = ({ players, isJerry
         >
           Exit to Main Screen
         </Button>
-      </div>
-      <div className="mt-4 sm:mt-6 pt-4 border-t border-gray-300">
-        <p className={`text-center ${isJerryGame ? 'text-gray-400' : isMernGame ? 'text-pink-600' : 'text-gray-500'} text-base`}>
-          Pocket Score © {new Date().getFullYear()} | a pk and dk app
-        </p>
       </div>
       {showFinalTally && (
         <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50`}>
