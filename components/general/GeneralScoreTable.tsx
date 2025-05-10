@@ -157,7 +157,9 @@ export const GeneralScoreTable: React.FC<GeneralScoreTableProps> = ({ // Renamed
                         {renderAsLiveInput ? (
                           <Input
                             ref={inputRef}
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="\d*"
                             value={currentTurnInput}
                             onChange={(e) => onInputChange(e.target.value)}
                             onKeyDown={handleKeyDown}
