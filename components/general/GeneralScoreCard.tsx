@@ -250,7 +250,7 @@ export const GeneralScoreCard: React.FC<GeneralScoreCardProps> = ({ players, onT
           onCloseFinalTallyModal={() => setShowSummaryModal(false)}
         />
       </div>
-      <div className="mt-8 w-full max-w-md mx-auto flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-4 sm:px-0">
+      <div className="container mx-auto w-full mt-8 mb-4 flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-2 sm:px-4">
         <Button 
           onClick={handleResetGame}
           className="w-full sm:flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out text-lg">
@@ -270,7 +270,9 @@ export const GeneralScoreCard: React.FC<GeneralScoreCardProps> = ({ players, onT
           Exit to Main Screen
         </Button>
       </div>
-      <UniversalFooter />
+      <div className="mt-8">
+        <UniversalFooter />
+      </div>
     </div>
   );
 }; 
