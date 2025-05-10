@@ -260,34 +260,14 @@ export default function HomePage() {
       setPlayerCount(1);
       setBackgammonOpponentType(OPPONENT_COMPUTER);
     } else {
-      // Handles modes like BACKGAMMON_MODE_KEY or any mode not matching above
       baseMode = modeKey;
-      // For modes not explicitly setting playerCount (like Backgammon), set a default or let specific logic handle it.
-      // Most player-count sensitive modes are now handled by suffixes.
-      // If it's not a known suffixed type, and not single player, default to 2.
       if (baseMode !== 'single' && baseMode !== 'farkle-pvc' && baseMode !== 'backgammon-pvp' && baseMode !== 'backgammon-pvc') {
-        // This case should ideally not be hit for modes that *should* have player counts
-        // as they should be selected with suffixes.
-        // If an old key like 'score-card' (without suffix) was somehow passed, this might apply.
         setPlayerCount(2); 
       }
     }
     
     setGameMode(baseMode); 
     setSelectedGameModeName(GAME_MODE_DISPLAY_NAMES[modeKey] || GAME_MODE_DISPLAY_NAMES[baseMode] || "");
-
-    // Explicitly manage backgammonOpponentType based on the selected mode
-    if (modeKey === 'backgammon-pvp') {
-      setBackgammonOpponentType(OPPONENT_PLAYER);
-    } else if (modeKey === 'backgammon-pvc') {
-      setBackgammonOpponentType(OPPONENT_COMPUTER);
-    } else if (baseMode !== 'backgammon-pvp' && baseMode !== 'backgammon-pvc') {
-      // If not a specific backgammon mode, reset or ensure opponent type is non-computer if that state is reused.
-      // For now, let's assume if it's not backgammon-pvc, it's not vs computer for backgammon context.
-      // If other modes might set OPPONENT_COMPUTER, this might need adjustment.
-      // setBackgammonOpponentType(OPPONENT_PLAYER); // Consider if this reset is broadly needed.
-    }
-
   }, []);
 
   return (
