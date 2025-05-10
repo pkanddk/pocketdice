@@ -491,7 +491,7 @@ export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players, onTur
           playerTotals={playerStates.map(ps => ps.total)}
           isPlayerOnBoard={playerStates.map(ps => ps.isOnBoard)}
           currentPlayerIndex={currentPlayerIndex}
-          actualCurrentTurnIndex={currentGlobalTurn - 1}
+          currentGlobalTurn={currentGlobalTurn - 1}
           displayedTurnCount={displayedTurnCount}
           currentTurnInput={currentTurnInput}
           liveTurnScore={0}

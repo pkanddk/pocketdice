@@ -17,7 +17,7 @@ interface FarkleScoreTableProps {
   playerTotals: number[];
   isPlayerOnBoard: boolean[]; // Added
   currentPlayerIndex: number;
-  actualCurrentTurnIndex: number; // Added
+  currentGlobalTurn: number; // Renamed from actualCurrentTurnIndex
   displayedTurnCount: number; // New prop for dynamic turn display
   currentTurnInput: string;
   gameMessage: string | null; // Added
@@ -61,7 +61,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
   playerTotals,
   isPlayerOnBoard,
   currentPlayerIndex,
-  actualCurrentTurnIndex,
+  currentGlobalTurn,
   displayedTurnCount,
   currentTurnInput,
   gameMessage,
@@ -203,10 +203,17 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                     {isPlayerOnBoard[index] ? (
                       <span className="block text-[10px] sm:text-xs opacity-90 font-normal">
                         Total: {playerTotals[index]}
+                        {index === currentPlayerIndex && liveTurnScore > 0 && 
+                          <span className="ml-1 text-green-400">(+{liveTurnScore})</span>
+                        }
                       </span>
                     ) : !gameOver ? (
                       <span className="block text-[10px] sm:text-xs opacity-70 font-normal">
-                        ({minimumToGetOnBoard} to board)
+                        {index === currentPlayerIndex && liveTurnScore > 0 
+                          ? (liveTurnScore >= minimumToGetOnBoard 
+                             ? <span className="text-green-400">Score: {liveTurnScore}</span> 
+                             : `(${minimumToGetOnBoard - liveTurnScore} to board)`)
+                          : `(${minimumToGetOnBoard} to board)`}
                       </span>
                     ) : null} 
                   </div>
@@ -233,7 +240,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                   </td>
                   {players.map((_, playerIdx) => {
                     const isCurrentPlayerCell = playerIdx === currentPlayerIndex;
-                    const isCurrentTurnCell = turnIndex === actualCurrentTurnIndex;
+                    const isCurrentTurnCell = turnIndex === currentGlobalTurn;
                     // const isActiveInputCellFramework = isCurrentPlayerCell && isCurrentTurnCell && !gameOver; // Removed logging variable
                     
                     // --- Add Cell Log --- 
@@ -266,18 +273,24 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                     return (
                       <td 
                         key={`score-${turnIndex}-${playerIdx}`} 
-                        // Adjust padding for body cells
                         className={`p-2 text-center border-r border-gray-100 ${playerIdx === players.length -1 ? 'border-r-0' : ''} relative ${
-                          isActiveInputCell && scoreEntryMode === 'auto' ? 'bg-white' : // Changed from bg-yellow-100
-                          isCurrentPlayerCell && !gameOver ? 'bg-red-50' : '' // Background for non-active cells in current player column
+                          isActiveInputCell ? 'bg-blue-50' : // Simple highlighting
+                          isCurrentPlayerCell && !gameOver ? 'bg-red-50' : '' 
                         }`}
                         onClick={() => {
                           if (canEditCell) {
                             onEditBankedScore(playerIdx, turnIndex);
+                          } else if (isActiveInputCell) {
+                            // Focus the input when clicking on the active cell
+                            if (inputRef.current) {
+                              inputRef.current.focus();
+                            }
                           }
                         }}
+                        style={{ 
+                          cursor: isActiveInputCell || canEditCell ? 'pointer' : 'default'
+                        }}
                       >
-                        {/* Conditional Rendering for Active Cell */}
                         {renderAsLiveInput ? (
                           <Input
                             ref={inputRef}
@@ -286,14 +299,18 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                             onChange={(e) => onInputChange(e.target.value)}
                             onKeyDown={handleKeyDown}
                             onBlur={handleInputBlur}
-                            className={`w-full h-full text-center text-lg p-1 border-2 ${hideSpinnerClass} ${
-                              parseInt(currentTurnInput, 10) === 0 && currentTurnInput.length > 0
+                            className={`w-full h-full text-center text-lg p-2 ${hideSpinnerClass} 
+                              bg-white rounded-md border
+                              ${parseInt(currentTurnInput, 10) === 0 && currentTurnInput.length > 0
                                 ? 'border-red-500 focus:border-red-700'
-                                : 'border-blue-300 focus:border-blue-500'
-                            } !bg-white rounded-md shadow-inner`}
+                                : 'border-blue-400 focus:border-blue-600'}`}
                             placeholder="0"
                             autoFocus
                             min="0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.currentTarget.focus();
+                            }}
                           />
                         ) : cellScoreValue !== null && cellScoreValue !== undefined ? (
                           <span 
