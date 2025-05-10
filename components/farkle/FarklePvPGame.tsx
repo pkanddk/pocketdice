@@ -359,10 +359,10 @@ export const FarklePvPGame: React.FC<FarklePvPGameProps> = ({ players }) => {
       {/* New Game / Reset Buttons */}
       <div className="mt-auto pt-3 pb-0 text-center space-y-3 sm:space-y-0 sm:space-x-4">
         <Button onClick={() => handleResetGame(false)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full text-lg">
-          New Game (Same Players)
+          Reset Game
         </Button>
         <Button onClick={() => handleResetGame(true)} className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full text-lg">
-          Reset Game (New Players)
+         Exit to Main Screen
         </Button>
       </div>
       

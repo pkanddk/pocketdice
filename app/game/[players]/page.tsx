@@ -74,7 +74,7 @@ export default function GamePage() {
               : 'bg-green-600 hover:bg-green-700'
         } text-white font-bold py-2 sm:py-3 px-6 sm:px-10 rounded-full transition duration-300 shadow-md hover:shadow-lg text-lg`}
       >
-        New Game (Same Players)
+        Reset Game
       </Button>
       <Button
         onClick={() => router.push('/')}
@@ -86,7 +86,7 @@ export default function GamePage() {
               : 'bg-red-600 hover:bg-red-700'
         } text-white font-bold py-2 sm:py-3 px-6 sm:px-10 rounded-full transition duration-300 shadow-md hover:shadow-lg text-lg`}
       >
-        Reset Game (New Players)
+        Exit to Main Screen
       </Button>
     </div>
   )

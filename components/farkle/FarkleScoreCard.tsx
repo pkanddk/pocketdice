@@ -524,12 +524,12 @@ export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players, onTur
         <Button 
           onClick={() => handleResetGame(false)} 
           className="w-full sm:flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out text-lg">
-          New Game, Same Players
+          Exit to Main Screen
         </Button>
         <Button 
           onClick={() => handleResetGame(true)} 
           className="w-full sm:flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out text-lg">
-          New Game, New Players
+          Exit to Main Screen
         </Button>
       </div>
       <UniversalFooter />

@@ -218,7 +218,7 @@ export const ScoreCardLogic: React.FC<ScoreCardLogicProps> = ({ players, isJerry
                 : 'bg-green-600 hover:bg-green-700'
           } text-white font-bold py-2 sm:py-3 px-6 sm:px-10 rounded-full transition duration-300 shadow-md hover:shadow-lg text-lg`}
         >
-          New Game (Same Players)
+          Reset Game
         </Button>
         <Button
           onClick={() => router.push('/')}
@@ -230,7 +230,7 @@ export const ScoreCardLogic: React.FC<ScoreCardLogicProps> = ({ players, isJerry
                 : 'bg-red-600 hover:bg-red-700'
           } text-white font-bold py-2 sm:py-3 px-6 sm:px-10 rounded-full transition duration-300 shadow-md hover:shadow-lg text-lg`}
         >
-          Reset Game (New Players)
+          Exit to Main Screen
         </Button>
       </div>
       <div className="mt-4 sm:mt-6 pt-4 border-t border-gray-300">

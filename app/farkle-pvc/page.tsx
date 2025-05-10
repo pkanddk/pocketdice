@@ -1584,14 +1584,14 @@ function FarklePvPPageContent() {
           // Ensuring full width on mobile, auto on larger screens within the flex row
           className="w-full sm:flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out"
         >
-          New Game, Same Players
+          Exit to Main Screen
         </Button>
         <Button 
           onClick={handleResetGameToNewPlayers} 
           // Ensuring full width on mobile, auto on larger screens within the flex row
           className="w-full sm:flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out"
         >
-          New Game, New Players
+          Exit to Main Screen
         </Button>
       </div>
 
@@ -1640,7 +1640,7 @@ function FarklePvPPageContent() {
               }}
               className="w-full bg-white text-indigo-600 hover:bg-indigo-50 focus:ring-2 focus:ring-white focus:ring-opacity-75 py-3 text-lg font-semibold rounded-lg shadow-md transition-transform duration-150 hover:scale-105 mt-4"
             >
-              Play Again (Same Players)
+              Reset Game
             </Button>
             <Button
               onClick={() => {
@@ -1649,7 +1649,7 @@ function FarklePvPPageContent() {
               }}
               className="w-full bg-transparent border border-white text-white hover:bg-white hover:text-indigo-600 focus:ring-2 focus:ring-white focus:ring-opacity-75 py-3 text-lg font-semibold rounded-lg shadow-md transition-transform duration-150 hover:scale-105 mt-3"
             >
-              New Game (Different Players)
+              Exit to Main Screen
             </Button>
             <Button
               onClick={() => router.push('/')} // Navigate to homepage or game selection
