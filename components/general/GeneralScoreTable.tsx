@@ -157,7 +157,7 @@ export const GeneralScoreTable: React.FC<GeneralScoreTableProps> = ({ // Renamed
               const turnNumber = turnIndex + 1;
               return (
                 <tr key={`turn-${turnIndex}`} className={`${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} border-b border-gray-100`}>
-                  <td className={`p-2 text-left sticky left-0 z-20 font-semibold border-r border-gray-100 ${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} flex justify-between items-center`}>
+                  <td className={`p-2 text-left sticky left-0 z-[25] font-semibold border-r border-gray-100 ${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} flex justify-between items-center`}>
                     <span>Turn {turnNumber}</span>
                   </td>
                   {players.map((_, playerIdx) => {
