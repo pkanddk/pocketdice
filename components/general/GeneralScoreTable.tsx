@@ -100,7 +100,7 @@ export const GeneralScoreTable: React.FC<GeneralScoreTableProps> = ({ // Renamed
   return (
     <>
       <div className="overflow-x-auto relative pb-4 w-full">
-        <table className="w-full border-collapse table-fixed rounded-lg">
+        <table className="w-full border-collapse rounded-lg">
           <thead className={`sticky z-20 top-0`}> 
             <tr className="bg-blue-600 text-white">
               <th className="p-2 sm:p-3 text-left sticky left-0 z-20 bg-blue-600 min-w-[100px] sm:min-w-[160px] border-r border-blue-500 rounded-tl-lg">
