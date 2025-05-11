@@ -66,6 +66,7 @@ export const GeneralScoreTable: React.FC<GeneralScoreTableProps> = ({ // Renamed
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const confirmInputRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // Ref for the scrollable div
 
   // Confetti effect for winning/game end (can be kept if desired for a general summary)
   useEffect(() => {
@@ -81,6 +82,31 @@ export const GeneralScoreTable: React.FC<GeneralScoreTableProps> = ({ // Renamed
       confirmInputRef.current.select();
     }
   }, [showConfirmModal]);
+
+  useEffect(() => {
+    if (scrollContainerRef.current && players.length > 0 && currentPlayerIndex >= 0 && currentPlayerIndex < players.length) {
+      const namesColHeader = document.getElementById('names-column-header') as HTMLElement | null;
+      const currentPlayerHeaderId = `player-col-header-${currentPlayerIndex}`;
+      const currentPlayerHeaderElement = document.getElementById(currentPlayerHeaderId) as HTMLElement | null;
+
+      if (namesColHeader && currentPlayerHeaderElement) {
+        const namesColumnWidth = namesColHeader.offsetWidth;
+        let scrollTarget = currentPlayerHeaderElement.offsetLeft - namesColumnWidth;
+        
+        // Ensure scrollTarget is not negative. If player is in the first few columns already visible, 
+        // we might not need to scroll, or scroll to 0 if it's the very first player column.
+        // This also handles the case for the first actual player column if its offsetLeft is less than namesColumnWidth (it shouldn't be).
+        scrollTarget = Math.max(0, scrollTarget);
+
+        // Using setTimeout to ensure other DOM updates potentially affecting offsetLeft/offsetWidth are settled
+        setTimeout(() => {
+          if(scrollContainerRef.current) {
+            scrollContainerRef.current.scrollLeft = scrollTarget;
+          }
+        }, 0);
+      }
+    }
+  }, [currentPlayerIndex, players]); // Re-run when currentPlayerIndex or players array changes
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
@@ -99,15 +125,17 @@ export const GeneralScoreTable: React.FC<GeneralScoreTableProps> = ({ // Renamed
 
   return (
     <>
-      <div className="overflow-x-auto relative pb-4 w-full">
+      <div ref={scrollContainerRef} className="overflow-x-auto relative pb-4 w-full">
         <table className="w-full border-collapse rounded-lg">
           <thead className={`sticky z-20 top-0`}> 
             <tr className="bg-blue-600 text-white">
-              <th className="p-2 sm:p-3 text-left sticky left-0 z-20 bg-blue-600 min-w-[100px] sm:min-w-[160px] border-r border-blue-500 rounded-tl-lg">
+              <th id="names-column-header" className="p-2 sm:p-3 text-left sticky left-0 z-20 bg-blue-600 min-w-[100px] sm:min-w-[160px] border-r border-blue-500 rounded-tl-lg">
                 <span className="px-2 py-1 font-semibold text-sm sm:text-base">Names</span>
               </th>
               {players.map((player, index) => (
-                <th key={index} 
+                <th 
+                    id={`player-col-header-${index}`}
+                    key={index} 
                     className={`p-2 sm:p-3 text-center min-w-[80px] sm:min-w-[100px] border-r border-blue-500 ${
                   index === players.length - 1 ? 'border-r-0 rounded-tr-lg' : ''
                 } ${
