@@ -103,12 +103,12 @@ export const GeneralScoreTable: React.FC<GeneralScoreTableProps> = ({ // Renamed
         <table className="w-full border-collapse table-fixed rounded-lg">
           <thead className={`sticky z-20 top-0`}> 
             <tr className="bg-blue-600 text-white">
-              <th className="p-2 sm:p-3 text-left sticky left-0 z-20 bg-blue-600 min-w-[90px] sm:min-w-[160px] border-r border-blue-500 rounded-tl-lg">
+              <th className="p-2 sm:p-3 text-left sticky left-0 z-20 bg-blue-600 min-w-[100px] sm:min-w-[160px] border-r border-blue-500 rounded-tl-lg">
                 <span className="px-2 py-1 font-semibold text-sm sm:text-base">Names</span>
               </th>
               {players.map((player, index) => (
                 <th key={index} 
-                    className={`p-2 sm:p-3 text-center min-w-[70px] sm:min-w-[100px] border-r border-blue-500 ${
+                    className={`p-2 sm:p-3 text-center min-w-[80px] sm:min-w-[100px] border-r border-blue-500 ${
                   index === players.length - 1 ? 'border-r-0 rounded-tr-lg' : ''
                 } ${
                   index === currentPlayerIndex && !gameOver ? 'bg-red-600' : 'bg-blue-600'
@@ -129,7 +129,7 @@ export const GeneralScoreTable: React.FC<GeneralScoreTableProps> = ({ // Renamed
               const turnNumber = turnIndex + 1;
               return (
                 <tr key={`turn-${turnIndex}`} className={`${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} border-b border-gray-100`}>
-                  <td className={`p-2 text-left sticky left-0 z-[5] font-semibold border-r border-gray-100 ${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} flex justify-between items-center`}>
+                  <td className={`p-2 text-left sticky left-0 z-10 font-semibold border-r border-gray-100 ${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} flex justify-between items-center`}>
                     <span>Turn {turnNumber}</span>
                   </td>
                   {players.map((_, playerIdx) => {
