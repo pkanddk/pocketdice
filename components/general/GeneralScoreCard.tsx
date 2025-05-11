@@ -250,27 +250,27 @@ export const GeneralScoreCard: React.FC<GeneralScoreCardProps> = ({ players, onT
           onCloseFinalTallyModal={() => setShowSummaryModal(false)}
         />
       </div>
-      <div className="container mx-auto w-full mt-8 mb-4 flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-2 sm:px-4">
-        <Button 
-          onClick={handleResetGame}
-          className="w-full sm:flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out text-lg">
-          Reset Scores
-        </Button>
-        <Button 
-          onClick={handleEndGameAndShowSummary} 
+      <div className="container mx-auto w-full mt-2 mb-0 flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-2 sm:px-4">
+        <Button
+          onClick={handleEndGameAndShowSummary}
           disabled={gameOver}
-          className={`w-full sm:flex-1 px-6 py-3 font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out text-lg ${
+          className={`w-full sm:flex-1 px-6 py-3 font-semibold rounded-full shadow-sm transition-colors duration-150 ease-in-out text-lg ${
             gameOver ? 'bg-gray-400 text-gray-700 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white'
           }`}>
-          End & Show Summary
+          End + Results
         </Button>
-        <Button 
+        <Button
+          onClick={handleResetGame}
+          className="w-full sm:flex-1 px-6 py-3 font-semibold rounded-full shadow-sm bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-150 ease-in-out text-lg">
+          Reset Game
+        </Button>
+        <Button
           onClick={() => router.push('/')}
-          className="w-full sm:flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out text-lg">
+          className="w-full sm:flex-1 px-6 py-3 font-semibold rounded-full shadow-sm bg-red-500 hover:bg-red-600 text-white transition-colors duration-150 ease-in-out text-lg">
           Exit to Main Screen
         </Button>
       </div>
-      <div className="mt-8">
+      <div className="mt-4">
         <UniversalFooter />
       </div>
     </div>

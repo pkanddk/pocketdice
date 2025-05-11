@@ -18,19 +18,19 @@ interface FarkleDiceAreaProps {
   onToggleHold: (index: number) => void; // Function to handle clicking a die
   isRolling: boolean;
 
-  // Props for moved buttons
-  handleRollDice: () => void;
-  handleBankScore: () => void;
-  isFarkle: boolean;
-  gameOver: boolean;
-  mustSelectDie: boolean;
-  currentTurnTotal: number;
-  playerStates: MinimalPlayerState[]; // Use minimal interface or import full
-  currentPlayerIndex: number;
-  MINIMUM_TO_GET_ON_BOARD: number;
-  finalRoundTriggeredBy: number | null;
-  playersCompletedFinalRound: boolean[];
-  canRollHotDice: boolean; // Add prop for hot dice
+  // Props for moved buttons - Make these optional with ?
+  handleRollDice?: () => void;
+  handleBankScore?: () => void;
+  isFarkle?: boolean;
+  gameOver?: boolean;
+  mustSelectDie?: boolean;
+  currentTurnTotal?: number;
+  playerStates?: MinimalPlayerState[]; // Use minimal interface or import full
+  currentPlayerIndex?: number;
+  MINIMUM_TO_GET_ON_BOARD?: number;
+  finalRoundTriggeredBy?: number | null;
+  playersCompletedFinalRound?: boolean[];
+  canRollHotDice?: boolean; // Add prop for hot dice
   isComputerThinking?: boolean; // Added prop for AI turn
 }
 
@@ -39,19 +39,19 @@ export const FarkleDiceArea: React.FC<FarkleDiceAreaProps> = ({
   diceStates = [], // Default to empty array if not provided
   onToggleHold,
   isRolling,
-  // Destructure button props
-  handleRollDice,
-  handleBankScore,
-  isFarkle,
-  gameOver,
-  mustSelectDie,
-  currentTurnTotal,
-  playerStates,
-  currentPlayerIndex,
-  MINIMUM_TO_GET_ON_BOARD,
-  finalRoundTriggeredBy,
-  playersCompletedFinalRound,
-  canRollHotDice, // Destructure prop
+  // Destructure button props with defaults
+  handleRollDice = () => {},
+  handleBankScore = () => {},
+  isFarkle = false,
+  gameOver = false,
+  mustSelectDie = false,
+  currentTurnTotal = 0,
+  playerStates = [],
+  currentPlayerIndex = 0,
+  MINIMUM_TO_GET_ON_BOARD = 500,
+  finalRoundTriggeredBy = null,
+  playersCompletedFinalRound = [],
+  canRollHotDice = false, // Destructure prop
   isComputerThinking = false // Destructure and default to false
 }) => {
 

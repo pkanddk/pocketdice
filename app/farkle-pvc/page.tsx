@@ -1578,13 +1578,13 @@ function FarklePvPPageContent() {
       </div>
 
       {/* Container for reset buttons - constraining width and centering */}
-      <div className="mt-3 mb-1 w-full max-w-md mx-auto flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-4 sm:px-0">
+      <div className="mt-1 mb-1 w-full max-w-md mx-auto flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-4 sm:px-0">
         <Button 
           onClick={handleResetGameSamePlayers} 
           // Ensuring full width on mobile, auto on larger screens within the flex row
           className="w-full sm:flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out"
         >
-          Exit to Main Screen
+          Reset Game
         </Button>
         <Button 
           onClick={handleResetGameToNewPlayers} 

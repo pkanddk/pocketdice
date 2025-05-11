@@ -126,9 +126,6 @@ export default function GamePage() {
         onResetGame={resetGame}
         renderNewGameButtons={renderNewGameButtons}
       />
-      <footer className="mt-auto pt-8 text-center text-sm text-gray-500">
-        <p>Pocket Score © {new Date().getFullYear()} | a pk and dk app</p>
-      </footer>
     </div>
   )
 }

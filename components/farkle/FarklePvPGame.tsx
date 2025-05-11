@@ -181,25 +181,72 @@ export const FarklePvPGame: React.FC<FarklePvPGameProps> = ({ players }) => {
 
   }, [isRolling, diceStates, diceValues, players, currentPlayerIndex]);
 
-  // --- TODO: Need a function for BANKING --- 
+  // --- Banking function implementation --- 
   const handleBankTurnScore = useCallback(() => {
-      console.log("Bank Score clicked - Needs implementation");
-      // 1. Check if currentTurnScore > 0 and meets on-board criteria if needed
-      // 2. Update playerStates[currentPlayerIndex].total and scores array
-      // 3. Reset dice states, currentTurnScore
-      // 4. Advance turn (call nextTurn or similar logic)
-      // Placeholder:
+      console.log("Bank Score clicked");
+      
+      // 1. Validate we have a score to bank
+      if (currentTurnScore <= 0) return;
+      
+      // 2. Ensure we have a valid player index
+      if (currentPlayerIndex < 0 || currentPlayerIndex >= playerStates.length) {
+          console.error("Invalid player index:", currentPlayerIndex);
+          return;
+      }
+      
+      // 3. Update player states safely
+      setPlayerStates(prevStates => {
+          // Create a copy of all player states
+          const newStates = [...prevStates];
+          
+          // Get the current player state
+          const oldPlayerState = newStates[currentPlayerIndex];
+          if (!oldPlayerState) {
+              console.error("Player state not found at index:", currentPlayerIndex);
+              return prevStates; // Return unchanged if something's wrong
+          }
+          
+          // Check if this score gets them on board
+          const wasOnBoard = oldPlayerState.isOnBoard;
+          const getsOnBoard = !wasOnBoard && currentTurnScore >= MINIMUM_TO_GET_ON_BOARD;
+          
+          // Create a new scores array - we need to ensure this exists
+          const newScores = [...oldPlayerState.scores];
+          // Set the score for the current turn (adjusting for 0-based array indexing)
+          newScores[currentGlobalTurn - 1] = currentTurnScore;
+          
+          // Create a completely new player state
+          newStates[currentPlayerIndex] = {
+              scores: newScores,
+              total: oldPlayerState.total + currentTurnScore,
+              isOnBoard: wasOnBoard || getsOnBoard
+          };
+          
+          return newStates;
+      });
+      
+      // 4. Set feedback message
       setGameMessage(`${players[currentPlayerIndex]} banked ${currentTurnScore} points!`);
+      
+      // 5. Reset current turn score
       setCurrentTurnScore(0);
-      // Advance turn logic needs to be robust (consider final round)
+      
+      // 6. Advance to next player
       const nextPlayer = (currentPlayerIndex + 1) % players.length;
       setCurrentPlayerIndex(nextPlayer);
+      
+      // 7. Increment global turn if we've gone through all players
       if (nextPlayer === 0) {
           setCurrentGlobalTurn(prev => prev + 1);
       }
-      setDiceValues([1,1,1,1,1,1]);
+      
+      // 8. Reset dice for next player
+      setDiceValues([1, 1, 1, 1, 1, 1]);
       setDiceStates(Array(6).fill('available'));
-  }, [currentTurnScore, currentPlayerIndex, players /* Add other dependencies */]);
+      
+      // 9. Keep track of who banked last (for final round logic)
+      setLastPlayerToBank(currentPlayerIndex);
+  }, [currentTurnScore, currentPlayerIndex, playerStates, players, currentGlobalTurn, MINIMUM_TO_GET_ON_BOARD]);
 
 
   // --- Existing useEffects and Handlers (needs review/modification) ---
@@ -295,7 +342,17 @@ export const FarklePvPGame: React.FC<FarklePvPGameProps> = ({ players }) => {
       
       {/* Render Dice Area */}
       <div className="mb-4 border border-gray-200 rounded-lg p-4 shadow-sm bg-white">
-          <h3 className="text-lg font-semibold mb-2 text-center">Current Turn Score: {currentTurnScore}</h3>
+          <h3 className="text-lg font-semibold mb-2 text-center">
+            {!playerStates[currentPlayerIndex]?.isOnBoard && currentTurnScore >= MINIMUM_TO_GET_ON_BOARD ? (
+              <span className="text-green-600">Current Turn: {currentTurnScore} points (Ready to Board!) ✓</span>
+            ) : !playerStates[currentPlayerIndex]?.isOnBoard ? (
+              <span>Current Turn: {currentTurnScore} points 
+                {currentTurnScore > 0 && <span className="text-gray-500"> ({MINIMUM_TO_GET_ON_BOARD - currentTurnScore} more to board)</span>}
+              </span>
+            ) : (
+              <span>Current Turn: {currentTurnScore} points</span>
+            )}
+          </h3>
           <FarkleDiceArea 
             diceValues={diceValues}
             diceStates={diceStates}
@@ -353,6 +410,8 @@ export const FarklePvPGame: React.FC<FarklePvPGameProps> = ({ players }) => {
           showFinalRoundInitiationNotice={showFinalRoundInitiationNotice}
           finalRoundInitiationMessage={finalRoundInitiationMessage}
           onDismissFinalRoundInitiationNotice={handleDismissFinalRoundInitiationNotice}
+          liveTurnScore={currentTurnScore}
+          isFarkleTurn={gameMessage?.includes("F#*KLED") || false}
         />
       </div>
 

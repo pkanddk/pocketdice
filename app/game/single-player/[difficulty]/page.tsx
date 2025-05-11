@@ -7,6 +7,7 @@ import { JerryLogo } from '@/components/JerryLogo'
 import { MernLogo } from '@/components/MernLogo'
 import { GameLogic } from '@/components/GameLogic'
 import { Button } from '@/components/ui/button'
+import { UniversalFooter } from '@/components/common/UniversalFooter'
 
 export default function SinglePlayerGamePage() {
   const router = useRouter()
@@ -98,7 +99,7 @@ export default function SinglePlayerGamePage() {
           onResetGame={resetGame}
         />
       )}
-      {renderNewGameButtons()}
+      <UniversalFooter />
     </div>
   )
 }
