@@ -216,7 +216,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
           <thead className={`sticky z-20 top-0`}> 
             <tr className="bg-blue-600 text-white">
               {/* Use min-w and consistent padding - MATCHING GeneralScoreTable */}
-              <th id="farkle-rules-header" className="p-1 sm:p-2 text-left sticky left-0 z-20 bg-blue-600 min-w-[80px] sm:min-w-[160px] border-r border-blue-500 rounded-tl-lg">
+              <th id="farkle-rules-header" className="p-1 sm:p-2 text-left sticky top-0 left-0 z-30 bg-blue-600 min-w-[80px] sm:min-w-[160px] border-r border-blue-500 rounded-tl-lg">
                 <Button
                   onClick={onToggleRulesModal}
                   variant="ghost"
@@ -275,7 +275,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
               return (
                 <tr key={`turn-${turnIndex}`} className={`${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} border-b border-gray-100`}>
                   {/* Adjust padding - MATCHING GeneralScoreTable */}
-                  <td className={`p-1 sm:p-2 text-xs sm:text-sm text-left sticky left-0 z-[5] font-semibold border-r border-gray-100 ${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} flex justify-between items-center`}>
+                  <td className={`p-1 sm:p-2 text-xs sm:text-sm text-left sticky left-0 z-10 font-semibold border-r border-gray-100 ${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} flex justify-between items-center`}>
                     <span>Turn {turnNumber}</span>
                     <div className="flex items-center">
                       {/* MODIFIED: Always show Dice1 */}
@@ -377,7 +377,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
             })}
             {/* Total Scores Row */}
             <tr className="bg-blue-700 text-white font-bold text-base sm:text-lg sticky bottom-0 z-20">
-              <td className="p-1 sm:p-2 text-left sticky left-0 z-[25] bg-blue-700 border-r border-blue-500 rounded-bl-lg">TOTAL</td>
+              <td className="p-1 sm:p-2 text-left sticky left-0 z-30 bg-blue-700 border-r border-blue-500 rounded-bl-lg">TOTAL</td>
               {players.map((_, playerIdx) => (
                 <td key={`total-${playerIdx}`} className={`p-1 sm:p-2 text-center border-r border-blue-500 ${playerIdx === players.length -1 ? 'border-r-0 rounded-br-lg' : ''}`}>
                   {playerTotals[playerIdx]}
