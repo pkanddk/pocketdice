@@ -1482,7 +1482,7 @@ function FarklePvPPageContent() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4 font-sans">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4 font-sans overscroll-x-none">
       <header className="text-center mb-6">
         <h1 className="text-4xl sm:text-5xl font-bold text-gray-800 tracking-tight flex items-center justify-center">
           Pocket Sc
