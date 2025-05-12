@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -43,12 +43,52 @@ export const ScoreTable: React.FC<ScoreTableProps> = ({
   isGameComplete,
   finalTally
 }) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current && players.length > 0 && currentPlayer >= 0 && currentPlayer < players.length) {
+      const scrollContainer = scrollContainerRef.current;
+      const rulesColHeader = document.getElementById('yahtzee-rules-header') as HTMLElement | null;
+      const currentPlayerHeaderId = `yahtzee-player-col-header-${currentPlayer}`;
+      const currentPlayerHeaderElement = document.getElementById(currentPlayerHeaderId) as HTMLElement | null;
+
+      if (rulesColHeader && currentPlayerHeaderElement) {
+        if (currentPlayer === 0) {
+          setTimeout(() => {
+            scrollContainer.scrollLeft = 0;
+          }, 0);
+          return;
+        }
+
+        const containerWidth = scrollContainer.offsetWidth;
+        const currentScrollLeft = scrollContainer.scrollLeft;
+        const playerLeft = currentPlayerHeaderElement.offsetLeft;
+        const playerWidth = currentPlayerHeaderElement.offsetWidth;
+        const playerRight = playerLeft + playerWidth;
+
+        const visibleRightEdge = currentScrollLeft + containerWidth;
+        const padding = 20;
+
+        if (playerRight > visibleRightEdge - padding) {
+          let targetScrollLeft = playerRight - containerWidth + padding;
+          targetScrollLeft = Math.max(0, targetScrollLeft);
+
+          if (Math.abs(targetScrollLeft - currentScrollLeft) > 1) {
+            setTimeout(() => {
+              scrollContainer.scrollLeft = targetScrollLeft;
+            }, 0);
+          }
+        }
+      }
+    }
+  }, [currentPlayer, players]);
+
   return (
-    <div className="overflow-x-auto">
+    <div ref={scrollContainerRef} className="overflow-x-auto">
       <table className="w-full border-collapse">
         <thead className="relative z-10">
           <tr className={`${isJerryGame ? 'bg-blue-800' : isMernGame ? 'bg-pink-600' : 'bg-blue-600'} ${isMernGame ? 'text-pink-900' : 'text-white'}`}>
-            <th className={`p-2 sm:p-4 text-left sticky left-0 z-10 min-w-[120px] sm:min-w-[200px] ${isJerryGame ? 'bg-blue-800' : isMernGame ? 'bg-pink-600' : 'bg-blue-600'}`}>
+            <th id="yahtzee-rules-header" className={`p-2 sm:p-4 text-left sticky left-0 z-10 min-w-[120px] sm:min-w-[200px] ${isJerryGame ? 'bg-blue-800' : isMernGame ? 'bg-pink-600' : 'bg-blue-600'}`}>
               <Button
                 onClick={() => setShowRules(!showRules)}
                 variant="ghost"
@@ -59,7 +99,7 @@ export const ScoreTable: React.FC<ScoreTableProps> = ({
               </Button>
             </th>
             {players.map((player, index) => (
-              <th key={index} className={`p-2 sm:p-4 text-center font-mono text-lg min-w-[80px] sm:min-w-[120px] ${
+              <th id={`yahtzee-player-col-header-${index}`} key={index} className={`p-2 sm:p-4 text-center font-mono text-lg min-w-[80px] sm:min-w-[120px] ${
                 index === currentPlayer 
                   ? 'bg-red-600 text-white'
                   : isJerryGame
