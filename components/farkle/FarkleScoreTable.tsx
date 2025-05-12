@@ -340,6 +340,8 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                           <Input
                             ref={inputRef}
                             type="number"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             value={currentTurnInput}
                             onChange={(e) => onInputChange(e.target.value)}
                             onKeyDown={handleKeyDown}
