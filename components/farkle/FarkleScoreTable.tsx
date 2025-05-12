@@ -394,62 +394,54 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
             const winnerIndex = players.indexOf(winningPlayerName);
             const winnerScore = playerTotals[winnerIndex] ?? 0;
             
+            // --- MODIFIED LOGIC START ---
             let loserScore = 0;
-            let humanNameInMsg = "Human"; // General fallback
-            let computerNameInMsg = "Computer"; // General fallback
-
-            if (players.length === 2) {
-              const p1Name = players[0] ?? "Player 1"; // Provide fallback if undefined
-              const p2Name = players[1] ?? "Player 2"; // Provide fallback if undefined
-              const p1Score = playerTotals[0] ?? 0;
-              const p2Score = playerTotals[1] ?? 0;
-
-              // Determine who is human and who is computer for the message
-              if (p1Name === "Computer") {
-                computerNameInMsg = p1Name;
-                humanNameInMsg = p2Name;
-              } else if (p2Name === "Computer") {
-                computerNameInMsg = p2Name;
-                humanNameInMsg = p1Name;
-              } else {
-                // If neither is named "Computer", assume p1 is human, p2 is opponent for messaging
-                humanNameInMsg = p1Name;
-                // computerNameInMsg remains "Computer" or could be p2Name if we want generic opponent
-              }
-
-              if (winningPlayerName === p1Name) { // Player 1 is winner
-                loserScore = p2Score;
-              } else { // Player 2 is winner
-                loserScore = p1Score;
-              }
-            } else if (players.length === 1 && winnerIndex === 0) {
-              loserScore = 0; 
-              humanNameInMsg = winningPlayerName; // Winner is the only player
-              // computerNameInMsg remains default as there's no explicit computer opponent
-            } else {
-              loserScore = 0;
-              // Attempt to find a human and computer name if possible from a larger list
-              const foundHuman = players.find(p => p && p !== "Computer");
-              if (foundHuman) humanNameInMsg = foundHuman;
-              if (players.includes("Computer")) computerNameInMsg = "Computer";
-            }
-
-            const marginOfVictory = winnerScore - loserScore;
             let finalMessage = "";
+            const isPvCGame = players.some(p => p === "Computer");
 
-            if (winningPlayerName === computerNameInMsg) { // Check against the identified computer name
-              finalMessage = `${computerNameInMsg} wins over ${humanNameInMsg} by ${marginOfVictory} points! Maybe try less silliness next time?`;
+            if (isPvCGame && players.length === 2) {
+              // Specific PvC logic (keep existing detailed message)
+              const computerName = "Computer";
+              const humanName = players.find(p => p !== computerName) ?? "Human";
+              const humanScore = playerTotals[players.indexOf(humanName)] ?? 0;
+              const computerScore = playerTotals[players.indexOf(computerName)] ?? 0;
+
+              if (winningPlayerName === computerName) {
+                loserScore = humanScore;
+                const marginOfVictory = computerScore - loserScore;
+                finalMessage = `${computerName} wins over ${humanName} by ${marginOfVictory} points! Maybe try less silliness next time?`;
+              } else { // Human wins
+                loserScore = computerScore;
+                const marginOfVictory = humanScore - loserScore;
+                finalMessage = `Smarty pants ${humanName} wins over ${computerName} by ${marginOfVictory} points! Well done!`;
+              }
+              // Handle PvC tie
+              if (winnerScore === loserScore) { 
+                 finalMessage = `It's a tie between ${humanName} and ${computerName} at ${winnerScore} points! This calls for a tie-breaker!`;
+              }
+
             } else {
-              finalMessage = `Smarty pants ${winningPlayerName} wins over ${computerNameInMsg} by ${marginOfVictory} points! Well done!`;
+              // Generic Scorecard / Multi-Player Logic
+              if (players.length > 1) {
+                // Find highest score among losers for potential margin, though not strictly needed for simple message
+                 loserScore = Math.max(...playerTotals.filter((_, i) => i !== winnerIndex));
+                 if (winnerScore === loserScore) {
+                     // Find all players tied at the winning score
+                     const tiedWinners = players.filter((_, i) => playerTotals[i] === winnerScore);
+                     if (tiedWinners.length > 1) {
+                        finalMessage = `It's a tie between ${tiedWinners.join(' and ')} at ${winnerScore} points! Amazing!`;
+                     } else {
+                        // Should not happen if winnerScore === loserScore but only one winner found, but fallback:
+                        finalMessage = `Congratulations, ${winningPlayerName}! You won with ${winnerScore} points!`;
+                     }
+                 } else {
+                    finalMessage = `🎉 Hooray for ${winningPlayerName}! You won with ${winnerScore} points! 🎉`;
+                 }
+              } else { // Single player game (shouldn't happen in scorecard, but safe fallback)
+                 finalMessage = `Game complete! ${winningPlayerName} finished with ${winnerScore} points!`;
+              }
             }
-            
-            if (winnerScore === loserScore && players.length > 1) { 
-                 finalMessage = `It's a tie between ${players.join(' and ')} at ${winnerScore} points! This calls for a tie-breaker!`;
-            } else if (marginOfVictory < 0 && players.length > 1 ) { 
-                finalMessage = `${winningPlayerName} wins with ${winnerScore} points! (Margin may be miscalculated if scores are unusual)`;
-            } else if (players.length <=1 && winnerIndex === 0) {
-                finalMessage = `${winningPlayerName} finished with ${winnerScore} points!`;
-            }
+            // --- MODIFIED LOGIC END ---
 
             return (
               <motion.div
