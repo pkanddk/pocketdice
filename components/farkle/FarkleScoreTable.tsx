@@ -275,12 +275,8 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
               return (
                 <tr key={`turn-${turnIndex}`} className={`${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} border-b border-gray-100`}>
                   {/* Adjust padding - MATCHING GeneralScoreTable */}
-                  <td className={`p-1 sm:p-2 text-xs sm:text-sm text-left sticky left-0 z-10 font-semibold border-r border-gray-100 ${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} flex justify-between items-center`}>
+                  <td className={`p-1 sm:p-2 text-xs sm:text-sm text-left sticky left-0 z-20 font-semibold ${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
                     <span>Turn {turnNumber}</span>
-                    <div className="flex items-center">
-                      {/* MODIFIED: Always show Dice1 */}
-                      <Dice1 className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 ml-1 sm:ml-2" />
-                    </div>
                   </td>
                   {players.map((_, playerIdx) => {
                     const isCurrentPlayerCell = playerIdx === currentPlayerIndex;
@@ -318,7 +314,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                       <td 
                         key={`score-${turnIndex}-${playerIdx}`} 
                         // Adjusted padding to p-2 to match GeneralScoreTable, and text size
-                        className={`p-2 text-xs sm:text-sm text-center border-r border-gray-100 ${playerIdx === players.length -1 ? 'border-r-0' : ''} relative ${
+                        className={`p-2 text-xs sm:text-sm text-center border-r border-gray-100 ${playerIdx === players.length -1 ? 'border-r-0' : ''} ${
                           isActiveInputCell ? 'bg-blue-50' : // Simple highlighting
                           isCurrentPlayerCell && !gameOver ? 'bg-red-50' : '' 
                         }`}
