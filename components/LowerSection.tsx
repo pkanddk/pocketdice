@@ -30,7 +30,7 @@ const getLowerCategories = (isJerryGame: boolean, isMernGame: boolean) => [
   'Chance'
 ]
 
-const lowerCategoryScores = {
+const lowerCategoryScores: { [key: string]: number } = {
   'Full House': 25,
   'Boat': 25,
   'Small Straight': 30,
@@ -62,7 +62,7 @@ export const LowerSection: React.FC<LowerSectionProps> = ({
         } transition-colors duration-150`}>
           <td className={`p-2 sm:p-4 text-lg font-semibold sticky left-0 z-30 ${isJerryGame ? 'bg-gray-800 text-white' : isMernGame ? 'bg-white text-gray-800' : 'bg-white text-gray-700'}`}>
             {category}
-            {lowerCategoryScores[category] && (
+            {lowerCategoryScores.hasOwnProperty(category) && lowerCategoryScores[category] && (
               <span className={`ml-2 text-base ${isJerryGame ? 'text-gray-300' : isMernGame ? 'text-pink-700' : 'text-gray-400'}`}>
                 ({lowerCategoryScores[category]} points)
               </span>
@@ -72,12 +72,15 @@ export const LowerSection: React.FC<LowerSectionProps> = ({
             <td key={playerIndex} className={`p-2 sm:p-4 text-center ${playerIndex === currentPlayer ? 'bg-red-50' : ''}`}>
               <Input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 min="0"
-                value={scores[playerIndex][6 + categoryIndex].value ?? ''}
+                value={scores?.[playerIndex]?.[6 + categoryIndex]?.value ?? ''}
                 onChange={(e) => handleScoreChange(playerIndex, 6 + categoryIndex, e.target.value)}
                 onClick={() => {
-                  if (scores[playerIndex][6 + categoryIndex].value !== null) {
-                    handleScoreChange(playerIndex, 6 + categoryIndex, scores[playerIndex][6 + categoryIndex].value?.toString() ?? '')
+                  const scoreValue = scores?.[playerIndex]?.[6 + categoryIndex]?.value;
+                  if (scoreValue !== null && scoreValue !== undefined) {
+                    handleScoreChange(playerIndex, 6 + categoryIndex, scoreValue.toString())
                   }
                 }}
                 className={`w-16 sm:w-24 text-center text-lg ${
@@ -97,7 +100,7 @@ export const LowerSection: React.FC<LowerSectionProps> = ({
         <td className={`p-2 sm:p-4 font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Lower Section Total</td>
         {players.map((_, playerIndex) => (
           <td key={playerIndex} className={`p-2 sm:p-4 text-center font-bold text-lg ${playerIndex === currentPlayer ? 'bg-red-50' : ''}`}>
-            {playerTotals[playerIndex].lowerTotal}
+            {playerTotals?.[playerIndex]?.lowerTotal ?? 0}
           </td>
         ))}
       </tr>

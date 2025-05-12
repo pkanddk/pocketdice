@@ -61,6 +61,8 @@ export const UpperSection: React.FC<UpperSectionProps> = ({
             <td key={playerIndex} className={`p-2 sm:p-4 text-center ${playerIndex === currentPlayer ? 'bg-red-50' : ''}`}>
               <Input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 min="0"
                 value={scores?.[playerIndex]?.[categoryIndex]?.value ?? ''}
                 onChange={(e) => handleScoreChange(playerIndex, categoryIndex, e.target.value)}
