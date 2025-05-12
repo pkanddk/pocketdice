@@ -73,7 +73,7 @@ export const ScoreTable: React.FC<ScoreTableProps> = ({
             ))}
           </tr>
         </thead>
-        <tbody className="font-mono relative z-0">
+        <tbody className="font-mono relative">
           <AnimatePresence>
             {showRules && (
               <motion.tr

@@ -520,11 +520,11 @@ export const FarkleScoreCard: React.FC<FarkleScoreCardProps> = ({ players, onTur
           onDismissFinalRoundInitiationNotice={handleDismissFinalRoundInitiationNotice}
         />
       </div>
-      <div className="mt-8 w-full max-w-md mx-auto flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-4 sm:px-0">
+      <div className="mt-2 w-full max-w-md mx-auto flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-4 sm:px-0 mb-4">
         <Button 
           onClick={() => handleResetGame(false)} 
           className="w-full sm:flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors duration-150 ease-in-out text-lg">
-          Exit to Main Screen
+          Reset Game
         </Button>
         <Button 
           onClick={() => handleResetGame(true)} 

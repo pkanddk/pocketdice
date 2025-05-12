@@ -51,9 +51,11 @@ export const UpperSection: React.FC<UpperSectionProps> = ({
           isMernGame ? 'border-pink-100' : 
           'border-gray-200'
         } transition-colors duration-150`}>
-          <td className={`p-2 sm:p-4 text-lg font-semibold sticky left-0 flex items-center justify-between ${isJerryGame ? 'bg-gray-800 text-white' : isMernGame ? 'bg-white text-gray-800' : 'bg-white text-gray-700'}`}>
-            <span>{category.name}</span>
-            <DiceIcon number={category.value as 1 | 2 | 3 | 4 | 5 | 6} className={`ml-2 ${isJerryGame ? 'text-blue-400' : isMernGame ? 'text-pink-600' : 'text-blue-600'} w-6 h-6`} />
+          <td className={`p-2 sm:p-4 text-lg font-semibold sticky left-0 z-30 ${isJerryGame ? 'bg-gray-800 text-white' : isMernGame ? 'bg-white text-gray-800' : 'bg-white text-gray-700'}`}>
+            <div className="flex items-center justify-between w-full">
+              <span>{category.name}</span>
+              <DiceIcon number={category.value as 1 | 2 | 3 | 4 | 5 | 6} className={`ml-2 ${isJerryGame ? 'text-blue-400' : isMernGame ? 'text-pink-600' : 'text-blue-600'} w-6 h-6`} />
+            </div>
           </td>
           {players.map((_, playerIndex) => (
             <td key={playerIndex} className={`p-2 sm:p-4 text-center ${playerIndex === currentPlayer ? 'bg-red-50' : ''}`}>
@@ -122,4 +124,3 @@ export const UpperSection: React.FC<UpperSectionProps> = ({
     </>
   )
 }
-

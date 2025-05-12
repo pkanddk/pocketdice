@@ -1531,7 +1531,7 @@ function FarklePvPPageContent() {
       </div>
 
       {/* Score Table */}
-      <div className="w-full max-w-4xl mt-4 mb-6"> {/* Outer wrapper */}
+      <div className="w-full max-w-4xl mt-4 mb-1"> {/* Outer wrapper */}
         {playerNames.length > 0 && playerStates.length > 0 && (
           <div className="w-full max-w-2xl mx-auto"> {/* Inner wrapper - ADDED mx-auto HERE */}
             <FarkleScoreTable 
@@ -1578,7 +1578,7 @@ function FarklePvPPageContent() {
       </div>
 
       {/* Container for reset buttons - constraining width and centering */}
-      <div className="mt-1 mb-1 w-full max-w-md mx-auto flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-4 sm:px-0">
+      <div className="mt-1 mb-4 w-full max-w-md mx-auto flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4 px-4 sm:px-0">
         <Button 
           onClick={handleResetGameSamePlayers} 
           // Ensuring full width on mobile, auto on larger screens within the flex row

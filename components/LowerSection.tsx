@@ -60,7 +60,7 @@ export const LowerSection: React.FC<LowerSectionProps> = ({
           isMernGame ? 'border-pink-100' : 
           'border-gray-200'
         } transition-colors duration-150`}>
-          <td className={`p-2 sm:p-4 text-lg font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-800 text-white' : isMernGame ? 'bg-white text-gray-800' : 'bg-white text-gray-700'}`}>
+          <td className={`p-2 sm:p-4 text-lg font-semibold sticky left-0 z-30 ${isJerryGame ? 'bg-gray-800 text-white' : isMernGame ? 'bg-white text-gray-800' : 'bg-white text-gray-700'}`}>
             {category}
             {lowerCategoryScores[category] && (
               <span className={`ml-2 text-base ${isJerryGame ? 'text-gray-300' : isMernGame ? 'text-pink-700' : 'text-gray-400'}`}>

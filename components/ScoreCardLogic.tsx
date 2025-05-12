@@ -99,13 +99,18 @@ export const ScoreCardLogic: React.FC<ScoreCardLogicProps> = ({ players, isJerry
       if (numValue === null || (!isNaN(numValue) && numValue >= 0)) {
         setScores(prevScores => {
           const newScores = [...prevScores];
-          newScores[playerIndex] = [...newScores[playerIndex]];
-          newScores[playerIndex][categoryIndex] = { value: numValue, locked: true };
+          if (newScores[playerIndex]) {
+            newScores[playerIndex] = [...newScores[playerIndex]];
+            newScores[playerIndex][categoryIndex] = { value: numValue, locked: true };
+          } else {
+            console.error(`Error: scores for playerIndex ${playerIndex} not initialized.`);
+          }
           return newScores;
         });
+        // Advance player only after successfully setting a score in an empty cell
+        setCurrentPlayer((prevPlayer) => (prevPlayer + 1) % players.length);
       }
     }
-    setCurrentPlayer((prevPlayer) => (prevPlayer + 1) % players.length);
   }, [scores, setScores, setSelectedScore, setShowConfirmModal, setScrollPosition, setNewValue, players.length]);
 
   const handleConfirmChange = useCallback((confirmedValue: string) => {
@@ -147,7 +152,6 @@ export const ScoreCardLogic: React.FC<ScoreCardLogicProps> = ({ players, isJerry
     setFinalTally(false)
     setShowFinalTally(false)
     setCurrentPlayer(0)
-    setConfirmedScores(Array(players.length).fill(null).map(() => Array(upperCategories.length + lowerCategories.length).fill(false)));
   }, [players.length, upperCategories.length, lowerCategories.length, setScores])
 
   const isGameComplete = useCallback(() => {

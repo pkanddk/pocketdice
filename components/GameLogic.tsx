@@ -503,9 +503,11 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                     isMernGame ? 'border-pink-100' :
                       'border-gray-200'
                 } transition-colors duration-150`}>
-                  <td className={`p-2 sm:p-4 text-lg font-semibold sticky left-0 flex items-center justify-between ${isJerryGame ? 'bg-gray-800 text-white' : isMernGame ? 'bg-white text-gray-800' : 'bg-white text-gray-700'}`}>
-                    <span>{category.name}</span>
-                    <DiceIcon number={category.value} className={`ml-2 ${isJerryGame ? 'text-blue-400' : isMernGame ? 'text-pink-600' : 'text-blue-600'} w-6 h-6`} />
+                  <td className={`p-2 sm:p-4 text-lg font-semibold sticky left-0 z-30 ${isJerryGame ? 'bg-gray-800 text-white' : isMernGame ? 'bg-white text-gray-800' : 'bg-white text-gray-700'}`}>
+                    <div className="flex items-center justify-between w-full">
+                      <span>{category.name}</span>
+                      <DiceIcon number={category.value} className={`ml-2 ${isJerryGame ? 'text-blue-400' : isMernGame ? 'text-pink-600' : 'text-blue-600'} w-6 h-6`} />
+                    </div>
                   </td>
                   {players.map((_, playerIndex) => (
                     <td key={playerIndex} className={`p-2 sm:p-4 text-center ${playerIndex === currentPlayer ? isJerryGame ? 'bg-gray-700' : 'bg-red-50' : ''}`}>
@@ -624,7 +626,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                   {players.map((_, playerIndex) => (
                     <td key={playerIndex} className={`p-2 sm:p-4 text-center ${playerIndex === currentPlayer ? isJerryGame ? 'bg-gray-700' : 'bg-red-50' : ''}`}>
                       <div className="w-16 sm:w-24 mx-auto">
-                        {playerIndex === currentPlayer && rollCount > 0 && possibleScores[upperCategories.length + categoryIndex] !== null && !scores[playerIndex][upperCategories.length + categoryIndex].locked ? (
+                        {playerIndex === currentPlayer && rollCount > 0 && possibleScores[upperCategories.length + categoryIndex] !== null && !scores[playerIndex]?.[upperCategories.length + categoryIndex]?.locked ? (
                           <Button
                             onClick={() => selectScore(upperCategories.length + categoryIndex)}
                             className={`w-full py-2 text-lg font-semibold ${
@@ -669,7 +671,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                 <td className={`p-2 sm:p-4 font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Lower Section Total</td>
                 {players.map((_, playerIndex) => (
                   <td key={playerIndex} className={`p-2 sm:p-4 text-center font-bold text-lg ${playerIndex === currentPlayer ? isJerryGame ? 'bg-gray-700' : 'bg-red-50' : ''}`}>
-                    {playerTotals?.[playerIndex]?.lowerTotal}
+                    {playerTotals?.[playerIndex]?.lowerTotal ?? 0}
                   </td>
                 ))}
               </tr>
@@ -709,7 +711,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                 <td className={`p-2 sm:p-4 font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Grand Total</td>
                 {players.map((_, playerIndex) => (
                   <td key={playerIndex} className={`p-2 sm:p-4 text-center font-bold text-lg ${playerIndex === currentPlayer ? isJerryGame ? 'bg-gray-700' : 'bg-red-50' : ''}`}>
-                    {finalTally ? playerTotals?.[playerIndex]?.grandTotal : '?'}
+                    {finalTally ? playerTotals?.[playerIndex]?.grandTotal ?? '?' : '?'}
                   </td>
                 ))}
               </tr>
