@@ -85,25 +85,46 @@ export const GeneralScoreTable: React.FC<GeneralScoreTableProps> = ({ // Renamed
 
   useEffect(() => {
     if (scrollContainerRef.current && players.length > 0 && currentPlayerIndex >= 0 && currentPlayerIndex < players.length) {
+      const scrollContainer = scrollContainerRef.current;
       const namesColHeader = document.getElementById('names-column-header') as HTMLElement | null;
       const currentPlayerHeaderId = `player-col-header-${currentPlayerIndex}`;
       const currentPlayerHeaderElement = document.getElementById(currentPlayerHeaderId) as HTMLElement | null;
 
       if (namesColHeader && currentPlayerHeaderElement) {
-        const namesColumnWidth = namesColHeader.offsetWidth;
-        let scrollTarget = currentPlayerHeaderElement.offsetLeft - namesColumnWidth;
-        
-        // Ensure scrollTarget is not negative. If player is in the first few columns already visible, 
-        // we might not need to scroll, or scroll to 0 if it's the very first player column.
-        // This also handles the case for the first actual player column if its offsetLeft is less than namesColumnWidth (it shouldn't be).
-        scrollTarget = Math.max(0, scrollTarget);
+        // Scroll fully left if it's the first player's turn
+        if (currentPlayerIndex === 0) {
+          setTimeout(() => {
+            scrollContainer.scrollLeft = 0;
+          }, 0);
+          return; // Don't do further calculations for the first player
+        }
 
-        // Using setTimeout to ensure other DOM updates potentially affecting offsetLeft/offsetWidth are settled
-        setTimeout(() => {
-          if(scrollContainerRef.current) {
-            scrollContainerRef.current.scrollLeft = scrollTarget;
+        const containerWidth = scrollContainer.offsetWidth;
+        const currentScrollLeft = scrollContainer.scrollLeft;
+        // const namesColumnWidth = namesColHeader.offsetWidth; // Not needed for the new logic, but keep if used elsewhere
+        const playerLeft = currentPlayerHeaderElement.offsetLeft;
+        const playerWidth = currentPlayerHeaderElement.offsetWidth;
+        const playerRight = playerLeft + playerWidth;
+
+        const visibleRightEdge = currentScrollLeft + containerWidth;
+        const padding = 20; // Pixels of padding from the right edge
+
+        // Check if the player's right edge is outside the visible area
+        if (playerRight > visibleRightEdge - padding) {
+          // Calculate the target scrollLeft to bring the player's right edge into view with padding
+          let targetScrollLeft = playerRight - containerWidth + padding;
+          // Ensure scrollLeft doesn't go negative
+          targetScrollLeft = Math.max(0, targetScrollLeft);
+
+          // Scroll only if the target is different from the current scroll position to avoid unnecessary scrolls
+          if (Math.abs(targetScrollLeft - currentScrollLeft) > 1) { // Use a small tolerance
+            setTimeout(() => {
+              scrollContainer.scrollLeft = targetScrollLeft;
+            }, 0);
           }
-        }, 0);
+        } 
+        // --- Removed the previous logic that always scrolled the player to the left edge --- 
+        // else: Player is already sufficiently visible, do nothing.
       }
     }
   }, [currentPlayerIndex, players]); // Re-run when currentPlayerIndex or players array changes

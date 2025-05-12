@@ -100,6 +100,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const confirmInputRef = useRef<HTMLInputElement>(null); // Ref for modal input
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // ADDED: Ref for the scrollable div
 
   useEffect(() => {
     if (showFinalTallyModal && winningPlayerName) {
@@ -115,6 +116,47 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
       confirmInputRef.current.select(); // Select text for easy replacement
     }
   }, [showConfirmModal]);
+
+  // ADDED: useEffect for smart horizontal scrolling
+  useEffect(() => {
+    if (scrollContainerRef.current && players.length > 0 && currentPlayerIndex >= 0 && currentPlayerIndex < players.length) {
+      const scrollContainer = scrollContainerRef.current;
+      const namesColHeader = document.getElementById('farkle-rules-header') as HTMLElement | null; // Use the ID of the first sticky header
+      const currentPlayerHeaderId = `farkle-player-col-header-${currentPlayerIndex}`;
+      const currentPlayerHeaderElement = document.getElementById(currentPlayerHeaderId) as HTMLElement | null;
+
+      if (namesColHeader && currentPlayerHeaderElement) {
+        // Scroll fully left if it's the first player's turn
+        if (currentPlayerIndex === 0) {
+          setTimeout(() => {
+            scrollContainer.scrollLeft = 0;
+          }, 0);
+          return; // Don't do further calculations for the first player
+        }
+
+        const containerWidth = scrollContainer.offsetWidth;
+        const currentScrollLeft = scrollContainer.scrollLeft;
+        const playerLeft = currentPlayerHeaderElement.offsetLeft;
+        const playerWidth = currentPlayerHeaderElement.offsetWidth;
+        const playerRight = playerLeft + playerWidth;
+
+        const visibleRightEdge = currentScrollLeft + containerWidth;
+        const padding = 20; // Pixels of padding from the right edge
+
+        // Check if the player's right edge is outside the visible area
+        if (playerRight > visibleRightEdge - padding) {
+          let targetScrollLeft = playerRight - containerWidth + padding;
+          targetScrollLeft = Math.max(0, targetScrollLeft);
+
+          if (Math.abs(targetScrollLeft - currentScrollLeft) > 1) {
+            setTimeout(() => {
+              scrollContainer.scrollLeft = targetScrollLeft;
+            }, 0);
+          }
+        }
+      }
+    }
+  }, [currentPlayerIndex, players]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
@@ -136,7 +178,7 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
   return (
     <>
       {/* Scrollable Table Area - container for the whole table and its sticky parts */}
-      <div className="overflow-x-auto relative pb-4 w-full">
+      <div ref={scrollContainerRef} className="overflow-x-auto relative pb-4 w-full">
         {/* Rules Modal - Kept outside the table, positioned fixed as before */}
         <AnimatePresence>
           {showRulesModal && (
@@ -168,50 +210,52 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Restore table-fixed for consistent column widths */}
-        <table className="w-full border-collapse table-fixed rounded-lg">
+        {/* REMOVE table-fixed for consistent column widths based on content */}
+        <table className="w-full border-collapse rounded-lg">
           {/* Main Sticky Header for Player Names and Rules */}
           <thead className={`sticky z-20 top-0`}> 
             <tr className="bg-blue-600 text-white">
-              {/* Use min-w and consistent padding */}
-              <th className="p-2 sm:p-3 text-left sticky left-0 z-20 bg-blue-600 min-w-[90px] sm:min-w-[160px] border-r border-blue-500 rounded-tl-lg">
+              {/* Use min-w and consistent padding - MATCHING GeneralScoreTable */}
+              <th id="farkle-rules-header" className="p-1 sm:p-2 text-left sticky left-0 z-20 bg-blue-600 min-w-[80px] sm:min-w-[160px] border-r border-blue-500 rounded-tl-lg">
                 <Button
                   onClick={onToggleRulesModal}
                   variant="ghost"
-                  // MODIFIED: Text/icon to red-600 on hover. Background remains consistent.
-                  className={`w-full h-full text-left font-semibold text-sm sm:text-base flex justify-between items-center text-white hover:text-red-600 transition-colors duration-200 rounded-none ${
+                  className={`w-full h-full text-left font-semibold text-xs sm:text-sm flex justify-between items-center text-white hover:text-red-600 transition-colors duration-200 rounded-none ${
                     showRulesModal 
                       ? 'bg-red-600 hover:bg-red-600' 
                       : 'bg-blue-600 hover:bg-blue-600'
                   }`}
                 >
                   Game Rules
-                  <Info className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Info className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
               </th>
               {players.map((player, index) => (
                 <th key={index} 
-                    // Use min-w and consistent padding
-                    className={`p-2 sm:p-3 text-center min-w-[70px] sm:min-w-[100px] border-r border-blue-500 ${
+                    id={`farkle-player-col-header-${index}`}
+                    // Use min-w and consistent padding - MATCHING GeneralScoreTable
+                    className={`p-1 sm:p-2 text-center min-w-[70px] sm:min-w-[100px] border-r border-blue-500 ${
                   index === players.length - 1 ? 'border-r-0 rounded-tr-lg' : ''
                 } ${
                   index === currentPlayerIndex && !gameOver ? 'bg-red-600' : 'bg-blue-600'
                 }`}>
                   <div className="flex flex-col items-center justify-center">
-                    {/* Keep adjusted font size for player name */}
-                    <span className="font-semibold text-sm sm:text-base break-words">{player}</span>
+                    {/* Adjusted font size for player name - MATCHING GeneralScoreTable */}
+                    <span className="font-semibold text-xs sm:text-sm break-words">{player}</span>
                     {isPlayerOnBoard[index] ? (
-                      <span className="block text-[10px] sm:text-xs opacity-90 font-normal">
+                      // Adjusted font size - MATCHING GeneralScoreTable
+                      <span className="block text-[9px] sm:text-xs opacity-90 font-normal">
                         Total: {playerTotals[index]}
-                        {index === currentPlayerIndex && liveTurnScore > 0 && 
-                          <span className="ml-1 text-green-400">(+{liveTurnScore})</span>
+                        {index === currentPlayerIndex && liveTurnScore > 0 && !isFarkleTurn &&
+                          <span className="ml-1 text-green-300">(+{liveTurnScore})</span>
                         }
                       </span>
                     ) : !gameOver ? (
-                      <span className="block text-[10px] sm:text-xs opacity-70 font-normal">
-                        {index === currentPlayerIndex && liveTurnScore > 0 
+                      // Adjusted font size - MATCHING GeneralScoreTable
+                      <span className="block text-[9px] sm:text-xs opacity-70 font-normal">
+                        {index === currentPlayerIndex && liveTurnScore > 0 && !isFarkleTurn
                           ? (liveTurnScore >= minimumToGetOnBoard 
-                             ? <span className="text-green-400">Score: {liveTurnScore}</span> 
+                             ? <span className="text-green-300">Score: {liveTurnScore}</span> 
                              : `(${minimumToGetOnBoard - liveTurnScore} to board)`)
                           : `(${minimumToGetOnBoard} to board)`}
                       </span>
@@ -230,12 +274,12 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
 
               return (
                 <tr key={`turn-${turnIndex}`} className={`${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} border-b border-gray-100`}>
-                  {/* Adjust padding, remove fixed height */}
-                  <td className={`p-2 text-left sticky left-0 z-[5] font-semibold border-r border-gray-100 ${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} flex justify-between items-center`}>
+                  {/* Adjust padding - MATCHING GeneralScoreTable */}
+                  <td className={`p-1 sm:p-2 text-xs sm:text-sm text-left sticky left-0 z-[5] font-semibold border-r border-gray-100 ${turnIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'} flex justify-between items-center`}>
                     <span>Turn {turnNumber}</span>
                     <div className="flex items-center">
                       {/* MODIFIED: Always show Dice1 */}
-                      <Dice1 className="w-5 h-5 text-blue-600 ml-2" />
+                      <Dice1 className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 ml-1 sm:ml-2" />
                     </div>
                   </td>
                   {players.map((_, playerIdx) => {
@@ -273,7 +317,8 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                     return (
                       <td 
                         key={`score-${turnIndex}-${playerIdx}`} 
-                        className={`p-2 text-center border-r border-gray-100 ${playerIdx === players.length -1 ? 'border-r-0' : ''} relative ${
+                        // Adjusted padding to p-2 to match GeneralScoreTable, and text size
+                        className={`p-2 text-xs sm:text-sm text-center border-r border-gray-100 ${playerIdx === players.length -1 ? 'border-r-0' : ''} relative ${
                           isActiveInputCell ? 'bg-blue-50' : // Simple highlighting
                           isCurrentPlayerCell && !gameOver ? 'bg-red-50' : '' 
                         }`}
@@ -299,11 +344,11 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                             onChange={(e) => onInputChange(e.target.value)}
                             onKeyDown={handleKeyDown}
                             onBlur={handleInputBlur}
-                            className={`w-full h-full text-center text-lg p-2 ${hideSpinnerClass} 
-                              bg-white rounded-md border
+                            className={`w-full h-full text-center text-base sm:text-lg p-1 border ${hideSpinnerClass} 
+                              bg-white rounded-md
                               ${parseInt(currentTurnInput, 10) === 0 && currentTurnInput.length > 0
-                                ? 'border-red-500 focus:border-red-700'
-                                : 'border-blue-400 focus:border-blue-600'}`}
+                                ? 'border-red-400 focus:border-red-600'
+                                : 'border-blue-300 focus:border-blue-500'}`}
                             placeholder="0"
                             autoFocus
                             min="0"
@@ -329,10 +374,10 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
               );
             })}
             {/* Total Scores Row */}
-            <tr className="bg-blue-700 text-white font-bold text-lg sticky bottom-0 z-20">
-              <td className="p-2 sm:p-3 text-left sticky left-0 z-[25] bg-blue-700 border-r border-blue-500 rounded-bl-lg">TOTAL</td>
+            <tr className="bg-blue-700 text-white font-bold text-base sm:text-lg sticky bottom-0 z-20">
+              <td className="p-1 sm:p-2 text-left sticky left-0 z-[25] bg-blue-700 border-r border-blue-500 rounded-bl-lg">TOTAL</td>
               {players.map((_, playerIdx) => (
-                <td key={`total-${playerIdx}`} className={`p-2 sm:p-3 text-center border-r border-blue-500 ${playerIdx === players.length -1 ? 'border-r-0 rounded-br-lg' : ''}`}>
+                <td key={`total-${playerIdx}`} className={`p-1 sm:p-2 text-center border-r border-blue-500 ${playerIdx === players.length -1 ? 'border-r-0 rounded-br-lg' : ''}`}>
                   {playerTotals[playerIdx]}
                   {gameOver && winningPlayerName === players[playerIdx] && <span className="ml-1">🏆</span>} 
                 </td>
