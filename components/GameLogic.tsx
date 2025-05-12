@@ -668,7 +668,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                   isMernGame ? 'border-pink-200' :
                     'border-gray-200'
               }`}>
-                <td className={`p-2 sm:p-4 font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Lower Section Total</td>
+                <td className={`p-2 sm:p-4 font-semibold sticky left-0 z-30 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Lower Section Total</td>
                 {players.map((_, playerIndex) => (
                   <td key={playerIndex} className={`p-2 sm:p-4 text-center font-bold text-lg ${playerIndex === currentPlayer ? isJerryGame ? 'bg-gray-700' : 'bg-red-50' : ''}`}>
                     {playerTotals?.[playerIndex]?.lowerTotal ?? 0}
@@ -684,8 +684,8 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                   isMernGame ? 'border-pink-200' :
                     'border-gray-200'
               }`}>
-                <td className={`p-2 sm:p-4 font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Final Tally</td>
-                <td colSpan={players.length} className="p-2 sm:p-4 text-center">
+                <td className={`p-2 sm:p-4 font-semibold sticky left-0 z-30 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Final Tally</td>
+                <td colSpan={players.length} className={`p-2 sm:p-4 text-center ${isJerryGame ? 'bg-gray-700' : isMernGame ? 'bg-pink-50' : 'bg-gray-100'}`}>
                   <Button
                     onClick={handleFinalTally}
                     disabled={!isGameComplete() || finalTally}
@@ -708,10 +708,10 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                   isMernGame ? 'border-pink-200' :
                     'border-gray-200'
               }`}>
-                <td className={`p-2 sm:p-4 font-semibold sticky left-0 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Grand Total</td>
+                <td className={`p-2 sm:p-4 font-semibold sticky left-0 z-30 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Grand Total</td>
                 {players.map((_, playerIndex) => (
                   <td key={playerIndex} className={`p-2 sm:p-4 text-center font-bold text-lg ${playerIndex === currentPlayer ? isJerryGame ? 'bg-gray-700' : 'bg-red-50' : ''}`}>
-                    {finalTally ? playerTotals?.[playerIndex]?.grandTotal ?? '?' : '?'}
+                    {finalTally ? playerTotals?.[playerIndex]?.grandTotal ?? 0 : ''}
                   </td>
                 ))}
               </tr>
