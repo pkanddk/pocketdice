@@ -553,37 +553,6 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Final Round Initiation Notice Modal */}
-        <AnimatePresence>
-        {showFinalRoundInitiationNotice && finalRoundInitiationMessage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center z-[70] p-4 pt-20"
-            // No onClick on backdrop
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: -20, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.9, y: 20, opacity: 0 }}
-              className="bg-blue-600 p-6 rounded-xl shadow-2xl max-w-md w-full mx-auto text-center border-2 border-blue-400"
-            >
-              <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-white">Final Round!</h2>
-              <p className="text-white text-lg sm:text-xl mb-6 px-2">
-                {finalRoundInitiationMessage}
-              </p>
-              <Button
-                onClick={onDismissFinalRoundInitiationNotice}
-                className="w-full bg-white hover:bg-blue-100 text-blue-700 font-bold py-3 px-6 rounded-lg text-lg shadow-md hover:shadow-lg transition-all duration-150"
-              >
-                OK, Let's Go!
-              </Button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       </div>
     </>
   );
