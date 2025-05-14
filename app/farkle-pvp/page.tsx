@@ -14,7 +14,7 @@ const MINIMUM_TO_GET_ON_BOARD = 500;
 const WINNING_SCORE = 10000;
 
 // DEBUG: Set to true to start all players at 9800 points for endgame testing. Set to false or remove to disable.
-const DEBUG_MODE = true;
+const DEBUG_MODE = false;
 
 interface PlayerState {
   total: number;
@@ -855,9 +855,7 @@ function FarklePvPPageContent() {
         }
         updatedCompletionStatusForBank = initialCompletion;
         setPlayersCompletedFinalRound(updatedCompletionStatusForBank); // Set state
-        setFinalRoundMessage(`🚨 Final Round! 🚨
-${playerNames[currentPlayerIndex]} just hit ${WINNING_SCORE}!
-Everyone else gets one last shot to steal the win!`);
+        setFinalRoundMessage(`${playerNames[currentPlayerIndex]} just hit ${WINNING_SCORE}!\nEveryone else gets one last shot to steal the win!`);
         setShowFinalRoundModal(true);
         console.log(`${playerNames[currentPlayerIndex]} reached ${WINNING_SCORE} and triggered the final round! Completion:`, updatedCompletionStatusForBank);
       } else if (finalRoundTriggeredBy !== null) {
@@ -969,7 +967,7 @@ Everyone else gets one last shot to steal the win!`);
       router.push('/'); // Redirect if no players defined
     }
     setGameStarted(true);
-  }, [searchParams, router]); // Added router dependency
+  }, []); // <--- Only run once on mount!
 
   useEffect(() => {
     // Trigger endGame when all final round turns are completed
