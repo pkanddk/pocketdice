@@ -384,6 +384,36 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
           </tbody>
         </table>
 
+        {/* Final Round Initiation Notice Modal */}
+        <AnimatePresence>
+          {showFinalRoundInitiationNotice && finalRoundInitiationMessage && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+              onClick={onDismissFinalRoundInitiationNotice}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: -20, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                className="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full mx-auto text-center border-2 border-blue-400"
+                onClick={e => e.stopPropagation()}
+              >
+                <h2 className="text-2xl font-bold mb-4 text-blue-700">Final Round!</h2>
+                <p className="text-lg mb-6 text-gray-700 whitespace-pre-line">{finalRoundInitiationMessage}</p>
+                <Button
+                  onClick={onDismissFinalRoundInitiationNotice}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg shadow-md hover:shadow-lg transition-all duration-150"
+                >
+                  Bring it on!
+                </Button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Final Tally Modal */}
         <AnimatePresence>
           {showFinalTallyModal && winningPlayerName && (() => {
