@@ -35,6 +35,7 @@ interface GeneralScoreTableProps { // Renamed interface
   // Props for a simplified "Game Over" or summary modal (if kept)
   showFinalTallyModal?: boolean;
   winningPlayerName?: string | null; // Or just highest scorer
+  winningPlayerIndices?: number[]; // <-- Add this for tie support
   onCloseFinalTallyModal?: () => void;
 }
 
@@ -62,6 +63,7 @@ export const GeneralScoreTable: React.FC<GeneralScoreTableProps> = ({ // Renamed
   // Simplified modal props
   showFinalTallyModal,
   winningPlayerName, 
+  winningPlayerIndices = [], // <-- Default to empty array
   onCloseFinalTallyModal,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -243,8 +245,8 @@ export const GeneralScoreTable: React.FC<GeneralScoreTableProps> = ({ // Renamed
               {players.map((_, playerIdx) => (
                 <td key={`total-${playerIdx}`} className={`p-2 sm:p-3 text-center border-r border-blue-500 ${playerIdx === players.length -1 ? 'border-r-0 rounded-br-lg' : ''}`}>
                   {playerTotals[playerIdx]}
-                  {/* Optional: Display a trophy if gameOver is true and this player is the winner/highest scorer */}
-                  {gameOver && winningPlayerName === players[playerIdx] && <span className="ml-1">🏆</span>} 
+                  {/* Show trophy only for winners (supporting ties) */}
+                  {gameOver && winningPlayerIndices.includes(playerIdx) && <span className="ml-1">🏆</span>}
                 </td>
               ))}
             </tr>
@@ -276,10 +278,10 @@ export const GeneralScoreTable: React.FC<GeneralScoreTableProps> = ({ // Renamed
                   {players.map((player, index) => (
                     <div
                       key={index}
-                      className={`flex justify-between items-center p-3 rounded-lg ${player === winningPlayerName ? 'bg-yellow-100 border border-yellow-300' : 'bg-gray-50 border border-gray-200'}`}
+                      className={`flex justify-between items-center p-3 rounded-lg ${winningPlayerIndices.includes(index) ? 'bg-yellow-100 border border-yellow-300' : 'bg-gray-50 border border-gray-200'}`}
                     >
-                      <span className={`text-lg font-medium ${player === winningPlayerName ? 'text-yellow-700' : 'text-gray-800'}`}>{player}</span>
-                      <span className={`font-mono font-bold text-lg ${player === winningPlayerName ? 'text-yellow-700' : 'text-gray-600'}`}>{playerTotals[index]}</span>
+                      <span className={`text-lg font-medium ${winningPlayerIndices.includes(index) ? 'text-yellow-700' : 'text-gray-800'}`}>{player}</span>
+                      <span className={`font-mono font-bold text-lg ${winningPlayerIndices.includes(index) ? 'text-yellow-700' : 'text-gray-600'}`}>{playerTotals[index]}{winningPlayerIndices.includes(index) && <span className="ml-1">🏆</span>}</span>
                     </div>
                   ))}
                 </div>

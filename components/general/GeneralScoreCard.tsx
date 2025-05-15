@@ -36,6 +36,7 @@ export const GeneralScoreCard: React.FC<GeneralScoreCardProps> = ({ players, onT
   const [gameOver, setGameOver] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [highestScorer, setHighestScorer] = useState<string | null>(null);
+  const [winningPlayerIndices, setWinningPlayerIndices] = useState<number[]>([]);
 
   const [lastSubmittedPlayerIndex, setLastSubmittedPlayerIndex] = useState<number | null>(null);
 
@@ -153,16 +154,22 @@ export const GeneralScoreCard: React.FC<GeneralScoreCardProps> = ({ players, onT
   const handleEndGameAndShowSummary = () => {
     setGameOver(true);
     let maxScore = -Infinity;
-    let currentHighestScorer = null;
-    playerStates.forEach((ps, index) => {
+    playerStates.forEach((ps) => {
       if (ps.total > maxScore) {
         maxScore = ps.total;
-        currentHighestScorer = players[index];
       }
     });
-    setHighestScorer(currentHighestScorer);
+    // Find all indices with maxScore
+    const winners: number[] = [];
+    playerStates.forEach((ps, idx) => {
+      if (ps.total === maxScore) {
+        winners.push(idx);
+      }
+    });
+    setWinningPlayerIndices(winners);
+    setHighestScorer(winners.length === 1 ? players[winners[0]] : null); // keep for message
     setShowSummaryModal(true);
-    setGameMessage(currentHighestScorer ? `${currentHighestScorer} has the highest score: ${maxScore}!` : "Game ended. No scores recorded.");
+    setGameMessage(winners.length > 0 ? `${winners.map(i => players[i]).join(', ')} ha${winners.length > 1 ? 've' : 's'} the highest score: ${maxScore}!` : "Game ended. No scores recorded.");
   };
 
   const handleEditBankedScoreTrigger = (playerIndex: number, turnIndex: number) => {
@@ -247,6 +254,7 @@ export const GeneralScoreCard: React.FC<GeneralScoreCardProps> = ({ players, onT
           selectedCellToEdit={selectedCellToEdit}
           showFinalTallyModal={showSummaryModal}
           winningPlayerName={highestScorer}
+          winningPlayerIndices={winningPlayerIndices}
           onCloseFinalTallyModal={() => setShowSummaryModal(false)}
         />
       </div>
