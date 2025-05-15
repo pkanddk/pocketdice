@@ -671,53 +671,60 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
 
     const pointData = clickedIndex !== BAR_POSITION ? gameState.board[clickedIndex] : null;
     const isCurrentPlayerBarNonEmpty = gameState.bar[gameState.currentPlayer] > 0;
+    const canBearOff = BackgammonRules.canBearOff(gameState.board, gameState.bar, gameState.currentPlayer);
+    const isInHomeBoard = BackgammonRules.isInHomeBoard(clickedIndex, gameState.currentPlayer);
 
+    // --- BAR RE-ENTRY LOGIC (unchanged) ---
     if (isCurrentPlayerBarNonEmpty) {
-      // Player HAS pieces on the bar.
       if (clickedIndex === BAR_POSITION) {
-        // User clicked the BAR itself.
-        if (selectedPointIndex === BAR_POSITION) { // Clicking bar when bar is already selected
-          setSelectedPointIndex(null); // Deselect bar
+        if (selectedPointIndex === BAR_POSITION) {
+          setSelectedPointIndex(null);
           debugLog("Deselected BAR by clicking it again", { player: gameState.currentPlayer });
         } else {
-          setSelectedPointIndex(BAR_POSITION); // Select bar
+          setSelectedPointIndex(BAR_POSITION);
           debugLog("Selected BAR by clicking it", { player: gameState.currentPlayer });
         }
-        return; // Handled bar click, exit
+        return;
       } else {
-        // User clicked a BOARD POINT (clickedIndex is 1-24).
-        // Since they have pieces on the bar, this click is an ATTEMPT to move FROM BAR to clickedIndex.
-        // No need to check selectedPointIndex here, the 'from' is implicitly BAR_POSITION.
         debugLog("Attempting move FROM BAR to board point", { from: BAR_POSITION, to: clickedIndex });
-        handlePieceMove(BAR_POSITION, clickedIndex); 
-        // setSelectedPointIndex(null); // handlePieceMove will clear selection if successful / or on turn end.
-        return; // Move attempted, exit
+        handlePieceMove(BAR_POSITION, clickedIndex);
+        return;
       }
     }
 
-    // Player does NOT have pieces on the bar (isCurrentPlayerBarNonEmpty is false).
-    // Proceed with normal point selection/move logic:
-    if (selectedPointIndex === null) {
-      // No point is currently selected, try to select this one as 'from'
-      if (pointData && pointData.player === gameState.currentPlayer && pointData.count > 0) {
-        setSelectedPointIndex(clickedIndex);
-        debugLog("Selected point as 'from'", { clickedIndex });
+    // --- BEARING OFF LOGIC ---
+    if (canBearOff && isInHomeBoard) {
+      // User is clicking a home-board point while bearing off is possible
+      // Attempt to bear off from this point (if legal)
+      const availableMoves = BackgammonRules.getAvailableMoves(gameState);
+      const bearOffMove = availableMoves.find(move => move.from === clickedIndex && move.to === BEARING_OFF_POSITION);
+      if (bearOffMove) {
+        debugLog("Bearing off from clicked point", { from: clickedIndex });
+        handlePieceMove(clickedIndex, BEARING_OFF_POSITION);
       } else {
-        debugLog("Clicked invalid starting point or empty point", { clickedIndex, pointData });
+        debugLog("Illegal bear off attempt from point", { from: clickedIndex });
+        setIllegalMoveFeedback({ index: clickedIndex, timestamp: Date.now() });
       }
-    } else {
-      // A point is already selected ('from' point could be a board point)
-      // (BAR_POSITION as selectedPointIndex is handled above if isCurrentPlayerBarNonEmpty)
-      if (selectedPointIndex === clickedIndex) {
-        setSelectedPointIndex(null); // De-select if clicking the same point
-        debugLog("De-selected point by clicking it again", { clickedIndex });
-      } else {
-        // Attempt to move from selectedPointIndex to clickedIndex (which is a board point here)
-        debugLog("Attempting move via click from selected to new point", { from: selectedPointIndex, to: clickedIndex });
-        handlePieceMove(selectedPointIndex, clickedIndex); 
-        // setSelectedPointIndex(null); // handlePieceMove will clear selection
+      return;
+    }
+
+    // --- NORMAL MOVE LOGIC (destination-only click) ---
+    // Find all available moves to this destination
+    const availableMoves = BackgammonRules.getAvailableMoves(gameState);
+    const candidateMoves = availableMoves.filter(move => move.to === clickedIndex && move.from !== BAR_POSITION);
+    if (candidateMoves.length > 0) {
+      // Pick the first legal move (or implement a heuristic if desired)
+      const move = candidateMoves[0];
+      if (move) {
+        debugLog("Auto-selecting and moving from", { from: move.from, to: move.to });
+        handlePieceMove(move.from, move.to);
+        return;
       }
     }
+
+    // If no move is possible, provide feedback
+    debugLog("No legal move to clicked destination", { to: clickedIndex });
+    setIllegalMoveFeedback({ index: clickedIndex, timestamp: Date.now() });
   }, [selectedPointIndex, gameState, handlePieceMove, setSelectedPointIndex, debugLog]);
 
   // Check for series winner
@@ -948,11 +955,13 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
         requiredMovesForTurn.some((move: Move) => move.from === position && move.to === BEARING_OFF_POSITION);
         
       // Is this point playable for ANY required move this turn?
+      const availableMoves = BackgammonRules.getAvailableMoves({
+        ...gameState,
+        dice: gameState.remainingDice
+      });
       const isPlayable = gameState.gameStarted &&
-        gameState.remainingDice.length > 0 && 
-        isPlayerPoint &&
-        (gameState.bar[gameState.currentPlayer] === 0) && 
-        requiredMovesForTurn.some((move: Move) => move.from === position); 
+        gameState.remainingDice.length > 0 &&
+        availableMoves.some((move: Move) => move.to === position && move.from !== BAR_POSITION && move.to !== BEARING_OFF_POSITION);
 
       // Add log
       console.log(`[Debug renderPoints] Point ${position}: isPlayable=${isPlayable}, canBearOff=${canBearOffFromPoint}, player=${point.player}, count=${point.count}, RequiredMoves=`, requiredMovesForTurn.length); 
