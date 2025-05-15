@@ -21,108 +21,88 @@ export function GameRules({ isJerryGame, isMernGame }: GameRulesProps) {
       </h2>
       <ul className="space-y-4">
         <li className="flex items-start">
-          <span className={`inline-flex items-center justify-center w-6 h-6 ${
-            isJerryGame ? 'bg-blue-900 text-blue-200' : 
-            isMernGame ? 'bg-pink-200 text-pink-600' : 
-            'bg-blue-100 text-blue-600'
-          } rounded-full font-bold mr-3 flex-shrink-0 text-lg`}>1</span>
-          <span className="text-base">The game consists of 13 rounds.</span>
+          <span className="rule-emoji">🎲</span>
+          <span className="text-base">The game consists of <span className="font-bold text-blue-500">13 rounds</span>.</span>
         </li>
         <li className="flex items-start">
-          <span className={`inline-flex items-center justify-center w-6 h-6 ${
-            isJerryGame ? 'bg-blue-900 text-blue-200' : 
-            isMernGame ? 'bg-pink-200 text-pink-600' : 
-            'bg-blue-100 text-blue-600'
-          } rounded-full font-bold mr-3 flex-shrink-0 text-lg`}>2</span>
-          <span className="text-base">In each round, you roll five dice up to three times.</span>
+          <span className="rule-emoji">🎲</span>
+          <span className="text-base">In each round, you roll five dice up to <span className="font-bold text-green-600">three times</span>.</span>
         </li>
         <li className="flex items-start">
-          <span className={`inline-flex items-center justify-center w-6 h-6 ${
-            isJerryGame ? 'bg-blue-900 text-blue-200' : 
-            isMernGame ? 'bg-pink-200 text-pink-600' : 
-            'bg-blue-100 text-blue-600'
-          } rounded-full font-bold mr-3 flex-shrink-0 text-lg`}>3</span>
-          <span className="text-base">After each roll, you can choose to keep any number of dice and reroll the rest.</span>
+          <span className="rule-emoji">👐</span>
+          <span className="text-base">After each roll, you can <span className="font-bold text-yellow-600">keep</span> any number of dice and reroll the rest.</span>
         </li>
         <li className="flex items-start">
-          <span className={`inline-flex items-center justify-center w-6 h-6 ${
-            isJerryGame ? 'bg-blue-900 text-blue-200' : 
-            isMernGame ? 'bg-pink-200 text-pink-600' : 
-            'bg-blue-100 text-blue-600'
-          } rounded-full font-bold mr-3 flex-shrink-0 text-lg`}>4</span>
-          <span className="text-base">After your third roll (or earlier if you choose), you must score in one of the 13 categories.</span>
+          <span className="rule-emoji">📝</span>
+          <span className="text-base">After your third roll (or earlier if you choose), you must <span className="font-bold text-pink-600">score</span> in one of the 13 categories.</span>
         </li>
         <li className="flex items-start">
-          <span className={`inline-flex items-center justify-center w-6 h-6 ${
-            isJerryGame ? 'bg-blue-900 text-blue-200' : 
-            isMernGame ? 'bg-pink-200 text-pink-600' : 
-            'bg-blue-100 text-blue-600'
-          } rounded-full font-bold mr-3 flex-shrink-0 text-lg`}>5</span>
-          <span className="text-base">Each category can only be scored once per game.</span>
+          <span className="rule-emoji">🚫</span>
+          <span className="text-base">Each category can only be <span className="font-bold text-red-500">scored once</span> per game.</span>
         </li>
         <li className="flex items-start">
-          <span className={`inline-flex items-center justify-center w-6 h-6 ${
-            isJerryGame ? 'bg-blue-900 text-blue-200' : 
-            isMernGame ? 'bg-pink-200 text-pink-600' : 
-            'bg-blue-100 text-blue-600'
-          } rounded-full font-bold mr-3 flex-shrink-0 text-lg`}>6</span>
-          <span className="text-base">The upper section categories (Ones through Sixes) score the sum of the dice showing that number.</span>
+          <span className="rule-emoji">🔢</span>
+          <span className="text-base">The upper section categories (<span className="font-bold text-blue-500">Ones</span> through <span className="font-bold text-blue-500">Sixes</span>) score the sum of the dice showing that number.</span>
         </li>
         <li className="flex items-start">
-          <span className={`inline-flex items-center justify-center w-6 h-6 ${
-            isJerryGame ? 'bg-blue-900 text-blue-200' : 
-            isMernGame ? 'bg-pink-200 text-pink-600' : 
-            'bg-blue-100 text-blue-600'
-          } rounded-full font-bold mr-3 flex-shrink-0 text-lg`}>7</span>
-          <span className="text-base">If you score 63 or more points in the upper section, you get a bonus of 35 points.</span>
+          <span className="rule-emoji">💰</span>
+          <span className="text-base">If you score <span className="font-bold text-green-600">63 or more</span> points in the upper section, you get a <span className="font-bold text-green-600">bonus of 35 points</span>!</span>
         </li>
         <li className="flex items-start">
-          <span className={`inline-flex items-center justify-center w-6 h-6 ${
-            isJerryGame ? 'bg-blue-900 text-blue-200' : 
-            isMernGame ? 'bg-pink-200 text-pink-600' : 
-            'bg-blue-100 text-blue-600'
-          } rounded-full font-bold mr-3 flex-shrink-0 text-lg`}>8</span>
-          <span className="text-base">Lower section categories have specific requirements:</span>
-          <ul className="ml-9 mt-2 space-y-2">
-            <li className="flex items-start">
-              <span className={`inline-block w-3 h-3 ${isJerryGame || isMernGame ? 'bg-blue-400' : 'bg-blue-200'} rounded-full mr-2 mt-1.5`}></span>
-              <span className="text-base">Three of a Kind: At least three dice showing the same number. Score is the sum of all dice.</span>
-            </li>
-            <li className="flex items-start">
-              <span className={`inline-block w-3 h-3 ${isJerryGame || isMernGame ? 'bg-blue-400' : 'bg-blue-200'} rounded-full mr-2 mt-1.5`}></span>
-              <span className="text-base">Four of a Kind: At least four dice showing the same number. Score is the sum of all dice.</span>
-            </li>
-            <li className="flex items-start">
-              <span className={`inline-block w-3 h-3 ${isJerryGame || isMernGame ? 'bg-blue-400' : 'bg-blue-200'} rounded-full mr-2 mt-1.5`}></span>
-              <span className="text-base">{isJerryGame || isMernGame ? "Boat" : "Full House"}: Three of one number and two of another. Scores 25 points.</span>
-            </li>
-            <li className="flex items-start">
-              <span className={`inline-block w-3 h-3 ${isJerryGame || isMernGame ? 'bg-blue-400' : 'bg-blue-200'} rounded-full mr-2 mt-1.5`}></span>
-              <span className="text-base">{isJerryGame || isMernGame ? "Smalls" : "Small Straight"}: Four sequential dice (e.g., 1-2-3-4, 2-3-4-5, or 3-4-5-6). Scores 30 points.</span>
-            </li>
-            <li className="flex items-start">
-              <span className={`inline-block w-3 h-3 ${isJerryGame || isMernGame ? 'bg-blue-400' : 'bg-blue-200'} rounded-full mr-2 mt-1.5`}></span>
-              <span className="text-base">{isJerryGame || isMernGame ? "Biggie" : "Large Straight"}: Five sequential dice (1-2-3-4-5 or 2-3-4-5-6). Scores 40 points.</span>
-            </li>
-            <li className="flex items-start">
-              <span className={`inline-block w-3 h-3 ${isJerryGame || isMernGame ? 'bg-blue-400' : 'bg-blue-200'} rounded-full mr-2 mt-1.5`}></span>
-              <span className="text-base">Yahtzee: All five dice showing the same number. Scores 50 points.</span>
-            </li>
-            <li className="flex items-start">
-              <span className={`inline-block w-3 h-3 ${isJerryGame || isMernGame ? 'bg-blue-400' : 'bg-blue-200'} rounded-full mr-2 mt-1.5`}></span>
-              <span className="text-base">Chance: Can be used for any roll. Score is the sum of all dice.</span>
-            </li>
-          </ul>
+          <span className="rule-emoji">📋</span>
+          <span className="text-base font-semibold">Lower Section Categories:</span>
+        </li>
+        <li className="ml-6">
+          <div className="rounded-xl bg-gradient-to-r from-blue-50 to-blue-100 p-3 shadow-sm">
+            <ul className="space-y-2">
+              <li className="flex items-center"><span className="subrule-dot" /> <span className="text-base">Three of a Kind: <span className="font-bold text-blue-500">Sum of all dice</span></span></li>
+              <li className="flex items-center"><span className="subrule-dot" /> <span className="text-base">Four of a Kind: <span className="font-bold text-blue-500">Sum of all dice</span></span></li>
+              <li className="flex items-center"><span className="subrule-dot" /> <span className="text-base">{isJerryGame || isMernGame ? "Boat" : "Full House"}: <span className="font-bold text-purple-600">25 points</span></span></li>
+              <li className="flex items-center"><span className="subrule-dot" /> <span className="text-base">{isJerryGame || isMernGame ? "Smalls" : "Small Straight"}: <span className="font-bold text-pink-600">30 points</span></span></li>
+              <li className="flex items-center"><span className="subrule-dot" /> <span className="text-base">{isJerryGame || isMernGame ? "Biggie" : "Large Straight"}: <span className="font-bold text-pink-600">40 points</span></span></li>
+              <li className="flex items-center"><span className="subrule-dot" /> <span className="text-base">Chance: <span className="font-bold text-blue-500">Sum of all dice</span></span></li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <div className="my-4 rounded-2xl bg-gradient-to-r from-yellow-200 via-yellow-100 to-yellow-50 p-4 shadow-md flex items-center gap-4">
+            <span className="text-3xl animate-bounce">🎉</span>
+            <span className="text-base"><span className="font-extrabold text-yellow-600">Yahtzee Bonus!</span> If you roll more than one Yahtzee in a game and have already scored <span className="font-bold text-yellow-700">50</span> in the Yahtzee category, you earn a <span className="font-bold text-yellow-700">100 point bonus</span> for each additional Yahtzee.</span>
+          </div>
+        </li>
+        <li>
+          <div className="my-2 rounded-2xl bg-gradient-to-r from-pink-100 via-pink-50 to-white p-4 shadow flex items-center gap-4">
+            <span className="text-2xl">🃏</span>
+            <span className="text-base"><span className="font-extrabold text-pink-600">Joker Rule:</span> If the Yahtzee category is filled (with 0 or 50) and the corresponding upper section is filled, you <span className="font-bold text-pink-600">must</span> use the Yahtzee as a joker to fill a lower section category, scoring that category as normal.</span>
+          </div>
         </li>
         <li className="flex items-start">
-          <span className={`inline-flex items-center justify-center w-6 h-6 ${
-            isJerryGame ? 'bg-blue-900 text-blue-200' : 
-            isMernGame ? 'bg-pink-200 text-pink-600' : 
-            'bg-blue-100 text-blue-600'
-          } rounded-full font-bold mr-3 flex-shrink-0 text-lg`}>9</span>
-          <span className="text-base">The player with the highest total score at the end of the game wins.</span>
+          <span className="rule-emoji">🏆</span>
+          <span className="text-base">The player with the <span className="font-bold text-green-600">highest total score</span> at the end of the game wins!</span>
         </li>
       </ul>
+      <style jsx>{`
+        .rule-emoji {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 2.25rem;
+          height: 2.25rem;
+          font-size: 1.5rem;
+          border-radius: 9999px;
+          margin-right: 0.75rem;
+          flex-shrink: 0;
+          background: linear-gradient(135deg, #f0f4ff 60%, #e0e7ff 100%);
+        }
+        .subrule-dot {
+          display: inline-block;
+          width: 0.75rem;
+          height: 0.75rem;
+          background: linear-gradient(135deg, #60a5fa 60%, #a5b4fc 100%);
+          border-radius: 9999px;
+          margin-right: 0.5rem;
+        }
+      `}</style>
     </div>
   )
 }

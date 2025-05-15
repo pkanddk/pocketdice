@@ -86,6 +86,8 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
   const [computerAI] = useState(() => new ComputerPlayerAI())
   const [scoreSelected, setScoreSelected] = useState(false)
   const [computerDecisionMessage, setComputerDecisionMessage] = useState<string | null>(null)
+  const [yahtzeeBonusMessage, setYahtzeeBonusMessage] = useState<string | null>(null)
+  const [yahtzeeBonuses, setYahtzeeBonuses] = useState<number[]>(() => players.map(() => 0));
 
   const getDisplayNames = useMemo(() => {
     return players.map(name => {
@@ -171,6 +173,42 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
     const currentPlayerScores = scores[currentPlayer];
     const scoreToTake = (categoryIndex >= 0 && categoryIndex < possibleScores.length) ? possibleScores[categoryIndex] : undefined;
 
+    // --- YAHTZEE BONUS & JOKER LOGIC START ---
+    const yahtzeeCategoryIndex = upperCategories.length + lowerCategories.findIndex(cat => cat === 'Yahtzee');
+    const yahtzeeScore = currentPlayerScores?.[yahtzeeCategoryIndex]?.value;
+    const yahtzeeLocked = currentPlayerScores?.[yahtzeeCategoryIndex]?.locked;
+    const isYahtzeeRoll = diceValues.every(v => v === diceValues[0]);
+    const isYahtzeeCategoryFilled = yahtzeeLocked && (yahtzeeScore === 0 || yahtzeeScore === 50);
+    const isYahtzeeCategory50 = yahtzeeLocked && yahtzeeScore === 50;
+    const upperFace = diceValues[0];
+    const upperFaceIndex = upperCategories.findIndex(cat => cat.value === upperFace);
+    const upperFaceLocked = currentPlayerScores?.[upperFaceIndex]?.locked;
+
+    let yahtzeeBonus = 0;
+    let jokerAllowed = false;
+    let jokerReason = '';
+
+    if (isYahtzeeRoll && isYahtzeeCategoryFilled) {
+      if (isYahtzeeCategory50) {
+        yahtzeeBonus = 100;
+        setYahtzeeBonusMessage('Yahtzee Bonus! +100 points!');
+        setTimeout(() => setYahtzeeBonusMessage(null), 2500);
+      }
+      if (upperFaceLocked) {
+        jokerAllowed = true;
+        jokerReason = 'Joker rule: Yahtzee used as joker.';
+      }
+    }
+
+    if (jokerAllowed && categoryIndex >= upperCategories.length && lowerCategories[categoryIndex - upperCategories.length] !== 'Yahtzee') {
+      // Allow selection as normal
+    } else if (isYahtzeeRoll && isYahtzeeCategoryFilled && !jokerAllowed && categoryIndex !== yahtzeeCategoryIndex) {
+      setYahtzeeBonusMessage('You must fill the corresponding upper section before using Yahtzee as a joker.');
+      setTimeout(() => setYahtzeeBonusMessage(null), 2500);
+      return;
+    }
+    // --- YAHTZEE BONUS & JOKER LOGIC END ---
+
     if (
       rollCount > 0 &&
       scoreToTake !== null && scoreToTake !== undefined &&
@@ -189,6 +227,13 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
         }
         return newScores;
       });
+      if (yahtzeeBonus > 0) {
+        setYahtzeeBonuses(prev => {
+          const updated = [...prev];
+          updated[currentPlayer] = (updated[currentPlayer] || 0) + yahtzeeBonus;
+          return updated;
+        });
+      }
       setScoreSelected(true);
       setRollCount(0);
       setDiceValues([1, 1, 1, 1, 1]);
@@ -196,7 +241,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
       setPossibleScores([])
       nextTurn()
     }
-  }, [rollCount, possibleScores, scores, currentPlayer, setScores, nextTurn])
+  }, [rollCount, possibleScores, scores, currentPlayer, setScores, nextTurn, diceValues, lowerCategories, upperCategories, yahtzeeBonuses])
 
   const calculateUpperTotal = useCallback((playerIndex: number) => {
     const playerScores = scores[playerIndex];
@@ -224,16 +269,18 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
     const upperTotal = calculateUpperTotal(playerIndex)
     const bonus = calculateBonus(upperTotal)
     const lowerTotal = calculateLowerTotal(playerIndex)
+    const yahtzeeBonus = yahtzeeBonuses[playerIndex] || 0;
     return {
       upperTotal,
       bonus,
       upperTotalWithBonus: upperTotal + bonus,
       lowerTotal,
-      grandTotal: upperTotal + bonus + lowerTotal,
+      grandTotal: upperTotal + bonus + lowerTotal + yahtzeeBonus,
       pointsToBonus: Math.max(0, BONUS_THRESHOLD - upperTotal),
-      pointsOverBonus: Math.max(0, upperTotal - BONUS_THRESHOLD)
+      pointsOverBonus: Math.max(0, upperTotal - BONUS_THRESHOLD),
+      yahtzeeBonus
     }
-  }), [players, calculateUpperTotal, calculateBonus, calculateLowerTotal])
+  }), [players, calculateUpperTotal, calculateBonus, calculateLowerTotal, yahtzeeBonuses])
 
   const handleFinalTally = useCallback(() => {
     setFinalTally(true)
@@ -829,6 +876,11 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
             </motion.div>
           </motion.div>
         </AnimatePresence>
+      )}
+      {yahtzeeBonusMessage && (
+        <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 bg-yellow-300 text-black text-2xl font-bold px-8 py-4 rounded-xl shadow-lg animate-bounce">
+          {yahtzeeBonusMessage}
+        </div>
       )}
     </div>
   )
