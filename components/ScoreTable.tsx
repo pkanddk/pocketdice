@@ -27,6 +27,11 @@ interface ScoreTableProps {
   handleFinalTally: () => void
   isGameComplete: () => boolean
   finalTally: boolean
+  editingCell: { playerIndex: number; categoryIndex: number } | null
+  editingValue: string
+  startEditing: (playerIndex: number, categoryIndex: number, value: string) => void
+  setEditingValue: (value: string) => void
+  commitEditing: () => void
 }
 
 export const ScoreTable: React.FC<ScoreTableProps> = ({
@@ -41,7 +46,12 @@ export const ScoreTable: React.FC<ScoreTableProps> = ({
   handleScoreChange,
   handleFinalTally,
   isGameComplete,
-  finalTally
+  finalTally,
+  editingCell,
+  editingValue,
+  startEditing,
+  setEditingValue,
+  commitEditing
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -148,6 +158,11 @@ export const ScoreTable: React.FC<ScoreTableProps> = ({
             isMernGame={isMernGame}
             handleScoreChange={handleScoreChange}
             finalTally={finalTally}
+            editingCell={editingCell}
+            editingValue={editingValue}
+            startEditing={startEditing}
+            setEditingValue={setEditingValue}
+            commitEditing={commitEditing}
           />
           <LowerSection
             players={players}
@@ -158,6 +173,11 @@ export const ScoreTable: React.FC<ScoreTableProps> = ({
             isMernGame={isMernGame}
             handleScoreChange={handleScoreChange}
             finalTally={finalTally}
+            editingCell={editingCell}
+            editingValue={editingValue}
+            startEditing={startEditing}
+            setEditingValue={setEditingValue}
+            commitEditing={commitEditing}
           />
           <tr className={`${isJerryGame ? 'bg-gray-700' : isMernGame ? 'bg-pink-50' : 'bg-gray-100'} border-b ${isJerryGame ? 'border-gray-600' : isMernGame ? 'border-pink-200' : 'border-gray-200'}`}>
             <td className={`p-2 sm:p-4 font-semibold sticky left-0 z-30 ${isJerryGame ? 'bg-gray-700 text-white' : isMernGame ? 'bg-pink-50 text-gray-800' : 'bg-gray-100 text-gray-700'} text-lg`}>Final Tally</td>

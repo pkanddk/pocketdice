@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import { MobileDiceRoller } from './MobileDiceRoller'
 import { Dice } from './Dice'
 
 interface DiceRollerProps {
@@ -34,16 +33,6 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
 }) => {
   const [isRolling, setIsRolling] = useState(false)
   const [isExpanded, setIsExpanded] = useState(true)
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 640)
-    }
-    checkIfMobile()
-    window.addEventListener('resize', checkIfMobile)
-    return () => window.removeEventListener('resize', checkIfMobile)
-  }, [])
 
   const rollDice = useCallback(() => {
     if (rollCount < 3 && !disabled && !scoreSelected) {
@@ -68,22 +57,6 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
     if (isJerryGame) return 'bg-blue-800'
     if (isMernGame) return 'bg-pink-600'
     return 'bg-blue-600'
-  }
-
-  if (isMobile) {
-    return (
-      <MobileDiceRoller
-        isJerryGame={isJerryGame}
-        isMernGame={isMernGame}
-        onRoll={onRoll}
-        onHold={onHold}
-        disabled={disabled}
-        rollCount={rollCount}
-        diceValues={diceValues}
-        heldDice={heldDice}
-        scoreSelected={scoreSelected}
-      />
-    )
   }
 
   return (

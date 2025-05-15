@@ -19,6 +19,11 @@ interface UpperSectionProps {
   isMernGame: boolean
   handleScoreChange: (playerIndex: number, categoryIndex: number, value: string) => void
   finalTally: boolean
+  editingCell: { playerIndex: number; categoryIndex: number } | null
+  editingValue: string
+  startEditing: (playerIndex: number, categoryIndex: number, value: string) => void
+  setEditingValue: (value: string) => void
+  commitEditing: () => void
 }
 
 const upperCategories = [
@@ -41,7 +46,12 @@ export const UpperSection: React.FC<UpperSectionProps> = ({
   isJerryGame,
   isMernGame,
   handleScoreChange,
-  finalTally
+  finalTally,
+  editingCell,
+  editingValue,
+  startEditing,
+  setEditingValue,
+  commitEditing
 }) => {
   return (
     <>
@@ -64,12 +74,27 @@ export const UpperSection: React.FC<UpperSectionProps> = ({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 min="0"
-                value={scores?.[playerIndex]?.[categoryIndex]?.value ?? ''}
-                onChange={(e) => handleScoreChange(playerIndex, categoryIndex, e.target.value)}
-                onClick={() => {
-                  const currentVal = scores?.[playerIndex]?.[categoryIndex]?.value;
-                  if (currentVal !== null && currentVal !== undefined) {
-                    handleScoreChange(playerIndex, categoryIndex, currentVal.toString())
+                value={editingCell && editingCell.playerIndex === playerIndex && editingCell.categoryIndex === categoryIndex ? editingValue : scores?.[playerIndex]?.[categoryIndex]?.value ?? ''}
+                onChange={e => {
+                  if (editingCell && editingCell.playerIndex === playerIndex && editingCell.categoryIndex === categoryIndex) {
+                    setEditingValue(e.target.value);
+                  } else {
+                    startEditing(playerIndex, categoryIndex, e.target.value);
+                  }
+                }}
+                onFocus={() => {
+                  if (!(editingCell && editingCell.playerIndex === playerIndex && editingCell.categoryIndex === categoryIndex)) {
+                    startEditing(playerIndex, categoryIndex, (scores?.[playerIndex]?.[categoryIndex]?.value ?? '').toString());
+                  }
+                }}
+                onBlur={() => {
+                  if (editingCell && editingCell.playerIndex === playerIndex && editingCell.categoryIndex === categoryIndex) {
+                    commitEditing();
+                  }
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && editingCell && editingCell.playerIndex === playerIndex && editingCell.categoryIndex === categoryIndex) {
+                    commitEditing();
                   }
                 }}
                 className={`w-16 sm:w-24 text-center text-lg ${

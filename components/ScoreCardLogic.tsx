@@ -51,6 +51,8 @@ export const ScoreCardLogic: React.FC<ScoreCardLogicProps> = ({ players, isJerry
   const router = useRouter()
   const [scrollPosition, setScrollPosition] = useState(0);
   const [newValue, setNewValue] = useState<string>('');
+  const [editingCell, setEditingCell] = useState<{ playerIndex: number; categoryIndex: number } | null>(null);
+  const [editingValue, setEditingValue] = useState<string>('');
 
   const calculateUpperTotal = useCallback((playerIndex: number) => {
     return upperCategories.reduce((sum, _, index) => sum + (scores[playerIndex]?.[index]?.value || 0), 0)
@@ -181,6 +183,20 @@ export const ScoreCardLogic: React.FC<ScoreCardLogicProps> = ({ players, isJerry
     }
   }, [showConfirmModal, scrollPosition]);
 
+  const startEditing = (playerIndex: number, categoryIndex: number, value: string) => {
+    setEditingCell({ playerIndex, categoryIndex });
+    setEditingValue(value);
+  };
+
+  const commitEditing = useCallback(() => {
+    if (editingCell) {
+      const { playerIndex, categoryIndex } = editingCell;
+      handleScoreChange(playerIndex, categoryIndex, editingValue);
+      setEditingCell(null);
+      setEditingValue('');
+    }
+  }, [editingCell, editingValue, handleScoreChange]);
+
   return (
     <div className={`container mx-auto px-2 sm:px-4 py-2 sm:py-4 min-h-screen ${
       isJerryGame ? 'bg-gray-900 text-white' :
@@ -209,6 +225,11 @@ export const ScoreCardLogic: React.FC<ScoreCardLogicProps> = ({ players, isJerry
           handleFinalTally={handleFinalTally}
           isGameComplete={isGameComplete}
           finalTally={finalTally}
+          editingCell={editingCell}
+          editingValue={editingValue}
+          startEditing={startEditing}
+          setEditingValue={setEditingValue}
+          commitEditing={commitEditing}
         />
       </div>
       <div className="mt-8 text-center space-y-3 sm:space-y-0 sm:space-x-4 mb-0">

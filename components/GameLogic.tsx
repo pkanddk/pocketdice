@@ -85,6 +85,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
   const [isComputerTurn, setIsComputerTurn] = useState(false)
   const [computerAI] = useState(() => new ComputerPlayerAI())
   const [scoreSelected, setScoreSelected] = useState(false)
+  const [computerDecisionMessage, setComputerDecisionMessage] = useState<string | null>(null)
 
   const getDisplayNames = useMemo(() => {
     return players.map(name => {
@@ -267,6 +268,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
     if (!computerAI) return
 
     setIsComputerTurn(true)
+    setComputerDecisionMessage(null);
     let remainingRolls = 3
     let currentDiceValues = [...diceValues]
     let keptDice = [...heldDice]
@@ -283,7 +285,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
         if (remainingRolls > 0) {
           keptDice = computerAI.decideDiceToKeep(currentDiceValues)
           setHeldDice(keptDice)
-          setTimeout(rollDice, 1000)
+          setTimeout(rollDice, 1300)
         } else {
           endTurn()
         }
@@ -327,6 +329,7 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
         return
       }
 
+      const scoreValue = possibleScores[selectedCategoryIndex] ?? 0;
       setScores(prevScores => {
         const newScores = [...prevScores]
         const targetPlayerScores = newScores[currentPlayer]
@@ -337,17 +340,20 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
         }
 
         const updatedPlayerScores = [...targetPlayerScores]
-        
         updatedPlayerScores[selectedCategoryIndex] = {
-          value: possibleScores[selectedCategoryIndex] ?? 0,
+          value: scoreValue,
           locked: true
         }
         newScores[currentPlayer] = updatedPlayerScores
         return newScores
       })
 
-      setIsComputerTurn(false)
-      nextTurn()
+      setComputerDecisionMessage(`Computer took ${scoreValue} point${scoreValue === 1 ? '' : 's'} in ${selectedCategory}`);
+      setTimeout(() => {
+        setComputerDecisionMessage(null);
+        setIsComputerTurn(false)
+        nextTurn()
+      }, 3000);
     }
 
     rollDice()
@@ -817,7 +823,9 @@ export const GameLogic: React.FC<GameLogicProps> = ({ players, isJerryGame, isMe
                   </motion.div>
                 ))}
               </div>
-              <p className="mt-4 text-center text-lg">Calculating best move...</p>
+              <p className="mt-4 text-center text-lg">
+                {computerDecisionMessage ? computerDecisionMessage : 'Calculating best move...'}
+              </p>
             </motion.div>
           </motion.div>
         </AnimatePresence>

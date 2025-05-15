@@ -20,8 +20,15 @@ interface PlayerState {
   scores: Array<number | null | undefined>; // Allow for undefined scores if not yet recorded
 }
 
+// DEBUG: Set to true to start both players at 9800 points for endgame testing. Set to false to disable.
+const DEBUG_MODE = false;
+
 // Moved initializePlayerState outside the component to ensure it's stable
-const createInitialPlayerState = (): PlayerState => ({ total: 0, isOnBoard: false, scores: [] });
+const createInitialPlayerState = (): PlayerState => (
+  DEBUG_MODE
+    ? { total: 9800, isOnBoard: true, scores: [] }
+    : { total: 0, isOnBoard: false, scores: [] }
+);
 
 // Updated to return score AND whether any scoring option exists
 interface FarkleScoreResult {
@@ -259,7 +266,7 @@ function FarklePvPPageContent() {
       setDiceValues(currentAIDiceValuesState); // Update main UI dice values
       // Dice states are still as they were (some held, some available that were just rolled)
 
-      await new Promise(res => setTimeout(res, 800));
+      await new Promise(res => setTimeout(res, 2000)); // <-- Add this delay for user visibility
 
       // AI decides based on the dice that were JUST rolled in this segment
       const decision = farkleAI.decideDiceToKeep(newlyRolledValues, currentAITurnScore);
@@ -490,37 +497,17 @@ function FarklePvPPageContent() {
   useEffect(() => {
     const humanPlayerNameFromParams = searchParams.get("playerName") || "Player 1";
     const initialNames = [humanPlayerNameFromParams, "Computer"];
-    
     console.log("[PlayerInit] Setting player names to:", initialNames);
     setPlayerNames(initialNames);
-
-    let initialStates = initialNames.map(() => createInitialPlayerState()); 
-
-    // Debug Mode: Start Player 1 near winning score
-    const debugEndGame = searchParams.get("debug_endgame") === "true";
-    if (debugEndGame) {
-      console.log("%c[PlayerInit] DEBUG ENDGAME MODE ACTIVATED: Both players start near winning score.", "color: orange; font-weight: bold;");
-      initialNames.forEach((name, index) => {
-        if (initialStates[index]) {
-          initialStates[index]!.total = 9800;
-          initialStates[index]!.isOnBoard = true;
-          console.log(`%c   -> ${name} starts at 9800 points.`, "color: orange;");
-        }
-      });
-    }
-
-    console.log("[PlayerInit] Setting player states to:", JSON.stringify(initialStates));
+    let initialStates = initialNames.map(() => createInitialPlayerState());
     setPlayerStates(initialStates);
-
     setPlayersCompletedFinalRound(new Array(initialNames.length).fill(false));
     setTieBreakerRoundCompleted(new Array(initialNames.length).fill(false));
-
     if (!gameStarted) {
       console.log("[PlayerInit] Game not started. Starting game and setting current player to 0.");
       setGameStarted(true);
       setCurrentPlayerIndex(0);
     }
-  // createInitialPlayerState is now stable (defined outside), so not needed in dependency array.
   }, [searchParams, gameStarted]);
 
   // --- Game Flow Functions ---
