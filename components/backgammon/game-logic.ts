@@ -404,7 +404,7 @@ export class BackgammonRules {
         if (die === dieNeeded) return true;
         
         if (die > dieNeeded) {
-          for (let pos = homeBoardRange.min; pos < from; pos++) {
+          for (let pos = from + 1; pos <= homeBoardRange.max; pos++) {
             const pointState = board[pos];
             if (pointState && pointState.player === player && pointState.count > 0) {
               return false;

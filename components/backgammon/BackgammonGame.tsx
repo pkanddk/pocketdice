@@ -520,6 +520,12 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     const availableMoves = BackgammonRules.getAvailableMoves(gameState);
     console.log('Available moves:', availableMoves);
     
+    // Defensive check: Only allow legal moves
+    const isMoveLegal = availableMoves.some(move => move.from === fromIndex && move.to === toIndex);
+    if (!isMoveLegal) {
+      console.warn(`Attempted illegal move from ${fromIndex} to ${toIndex}. Move not in available moves. No dice will be removed.`);
+      return;
+    }
     // Find a matching move from the available moves
     const matchingMove = availableMoves.find(move => 
       move.from === fromIndex && move.to === toIndex
@@ -560,6 +566,44 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     // Check if this was a combined move that uses both dice
     if (matchingMove.usesBothDice) {
       console.log('This is a combined move using both dice - ending turn');
+      // Explicitly remove both dice used for the move from remainingDice
+      const tempRemainingDice = [...gameState.remainingDice];
+      // Try to remove both dice (for non-doubles, should be two different values)
+      if (tempRemainingDice.length >= 2) {
+        // Remove the two dice that sum to matchingMove.die
+        // Try both orders (die1, die2) and (die2, die1)
+        let found = false;
+        for (let i = 0; i < tempRemainingDice.length; i++) {
+          for (let j = 0; j < tempRemainingDice.length; j++) {
+            if (
+              i !== j &&
+              tempRemainingDice[i] !== undefined &&
+              tempRemainingDice[j] !== undefined &&
+              tempRemainingDice[i] + tempRemainingDice[j] === matchingMove.die
+            ) {
+              // Remove the higher index first to avoid reindexing issues
+              const first = Math.max(i, j);
+              const second = Math.min(i, j);
+              if (tempRemainingDice[first] !== undefined) {
+                tempRemainingDice.splice(first, 1);
+              }
+              if (tempRemainingDice[second] !== undefined) {
+                tempRemainingDice.splice(second, 1);
+              }
+              found = true;
+              break;
+            }
+          }
+          if (found) break;
+        }
+        if (!found) {
+          // Fallback: just clear the array (should not happen in normal play)
+          tempRemainingDice.length = 0;
+        }
+      } else {
+        tempRemainingDice.length = 0;
+      }
+      newGameState.remainingDice = tempRemainingDice;
       // End turn immediately for combined moves
       newGameState.currentPlayer = newGameState.currentPlayer === BLACK ? WHITE : BLACK;
       newGameState.dice = [];
@@ -567,7 +611,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
       newGameState.diceRolled = false;
     } else {
       // Regular move - remove only the used die or dice
-      const tempRemainingDice = [...activeDice]; // Create a mutable copy
+      const tempRemainingDice = [...gameState.remainingDice]; // Always use the latest remainingDice
 
       if (matchingMove.isChainedDouble && typeof matchingMove.diceUsed === 'number' && matchingMove.diceUsed > 0) {
         // This is a compound move using multiple identical dice (e.g., from doubles)
@@ -713,10 +757,11 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     const availableMoves = BackgammonRules.getAvailableMoves(gameState);
     const candidateMoves = availableMoves.filter(move => move.to === clickedIndex && move.from !== BAR_POSITION);
     if (candidateMoves.length > 0) {
-      // Pick the first legal move (or implement a heuristic if desired)
-      const move = candidateMoves[0];
+      // Prefer a combined move (usesBothDice) if available
+      const combinedMove = candidateMoves.find(m => m.usesBothDice);
+      const move = combinedMove || candidateMoves[0];
       if (move) {
-        debugLog("Auto-selecting and moving from", { from: move.from, to: move.to });
+        debugLog("Auto-selecting and moving from", { from: move.from, to: move.to, usesBothDice: move.usesBothDice });
         handlePieceMove(move.from, move.to);
         return;
       }
