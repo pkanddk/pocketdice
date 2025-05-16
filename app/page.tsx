@@ -360,7 +360,7 @@ export default function HomePage() {
           transition={{ delay: 0.4, duration: 0.5 }}
           className="text-center mt-8 mb-4"
         >
-          <p className="text-blue-700">Choose your game mode and click Start Game to begin!</p>
+          <p className="text-blue-700">No ads ever!</p>
            {/* Add the die icon below the text */}
           <div className="mt-2 inline-block border-2 border-blue-500 rounded p-1">
               <Dice3 className="h-4 w-4 text-blue-600" />
