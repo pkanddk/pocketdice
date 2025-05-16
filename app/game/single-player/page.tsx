@@ -6,7 +6,6 @@ import { Logo } from '@/components/Logo'
 import { JerryLogo } from '@/components/JerryLogo'
 import { MernLogo } from '@/components/MernLogo'
 import { GameLogic } from '@/components/GameLogic'
-import { UniversalFooter } from '@/components/common/UniversalFooter'
 
 function SinglePlayerGamePage() {
 const searchParams = useSearchParams()
@@ -110,7 +109,6 @@ return (
      isSinglePlayer={true}
      onResetGame={handleResetGame}
    />
-   <UniversalFooter />
  </div>
 )
 }
