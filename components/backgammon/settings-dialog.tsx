@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Sparkles, Music, VolumeX } from "lucide-react"
 import { useState } from "react"
 import { motion } from "framer-motion"
+import { Switch } from "@/components/ui/switch"
 
 // Import the cultural backgrounds
 import { culturalBackgrounds } from "@/utils/cultural-backgrounds"
@@ -20,9 +21,20 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ open, onOpenChange, theme, onThemeChange }: SettingsDialogProps) {
   const [soundOn, setSoundOn] = useState(true)
+  const [debugOn, setDebugOn] = useState(
+    typeof window !== 'undefined' ? localStorage.getItem('backgammonDebug') === 'true' : false
+  )
 
   const toggleSound = () => {
     setSoundOn(!soundOn)
+  }
+
+  const handleDebugToggle = (checked: boolean) => {
+    setDebugOn(checked)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('backgammonDebug', checked ? 'true' : 'false')
+      window.location.reload()
+    }
   }
 
   return (
@@ -175,6 +187,11 @@ export function SettingsDialog({ open, onOpenChange, theme, onThemeChange }: Set
                 {soundOn ? <Music className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
               </Button>
             </div>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-white/10 pt-4 mt-2">
+            <Label className="text-base text-white">Debug Mode</Label>
+            <Switch checked={debugOn} onCheckedChange={handleDebugToggle} />
           </div>
 
           <motion.div className="mt-2 flex justify-center" whileHover={{ scale: 1.05 }}>

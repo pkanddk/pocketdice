@@ -402,9 +402,9 @@ export class BackgammonRules {
       if (String(from) in bearingOffDice) {
         const dieNeeded = bearingOffDice[from as keyof typeof bearingOffDice];
         if (die === dieNeeded) return true;
-        
         if (die > dieNeeded) {
-          for (let pos = from + 1; pos <= homeBoardRange.max; pos++) {
+          // For WHITE, higher points are numerically LOWER (24, 23, ..., 19)
+          for (let pos = from - 1; pos >= homeBoardRange.min; pos--) {
             const pointState = board[pos];
             if (pointState && pointState.player === player && pointState.count > 0) {
               return false;

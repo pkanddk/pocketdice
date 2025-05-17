@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { SettingsDialog } from "./settings-dialog"
 import { Bar } from "./bar"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"; // Added import
 import { getThemeStyle } from "@/utils/theme-styles"
 import { BoardPoint } from './board-point'
 import { BackgammonRules } from './game-logic'
@@ -19,11 +20,15 @@ import { Player, BoardState, BarState, GameState, Move, DiceRoll, BorneOffState,
 import { culturalBackgrounds } from "@/utils/cultural-backgrounds"
 
 // Add at the top after imports
-const DEBUG = true;
+const DEBUG = typeof window !== 'undefined' ? (localStorage.getItem('backgammonDebug') === 'true') : false;
 
-const debugLog = (message: string, data: any) => {
+const debugLog = (message: string, data?: any) => {
   if (DEBUG) {
-    console.log(`[Backgammon Debug] ${message}:`, data);
+    if (data !== undefined) {
+      console.log(`[Backgammon Debug] ${message}:`, data);
+    } else {
+      console.log(`[Backgammon Debug] ${message}`);
+    }
   }
 };
 
@@ -190,11 +195,25 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   const [hasMounted, setHasMounted] = useState(false);
   const [illegalMoveFeedback, setIllegalMoveFeedback] = useState<{ index: number | null, timestamp: number | null }>({ index: null, timestamp: null });
 
+  // State for controlling debug button visibility to prevent hydration errors
+  const [clientDebugEnabled, setClientDebugEnabled] = useState(false);
+
+  // Add state for end-of-game modal
+  const [showEndGameModal, setShowEndGameModal] = useState(false);
+  const [endGameInfo, setEndGameInfo] = useState<{ winner: Player, points: number, seriesWinner: Player | null, scores: { 1: number, 2: number } } | null>(null);
+
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
-  // New useEffect to set theme to "russian" if player name is "Elia"
+  // Effect to enable debug features on the client if localStorage is set
+  useEffect(() => {
+    if (localStorage.getItem('backgammonDebug') === 'true') {
+      setClientDebugEnabled(true);
+    }
+  }, []);
+
+  // New useEffect to set theme to "russia" if player name is "Elia"
   useEffect(() => {
     console.log("[Theme Check useEffect] Running. Player names:", playerNames);
     if (playerNames && playerNames.some(name => name.trim().toLowerCase() === "elia")) {
@@ -324,6 +343,11 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     router.push('/');
   };
 
+  // Start game function
+  const handleStartGame = () => {
+    setGameState(state => ({ ...state, gameStarted: true }));
+  };
+
   // Debug function to set up testing bearing off
   const setupForBearingOff = () => {
     if (!DEBUG) return;
@@ -448,8 +472,9 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     // Clear selection and feedback state explicitly on switch
     setSelectedPointIndex(null);
     setShowNoMovesFeedback(false);
-    if (noMovesTimerRef.current) {
-      clearTimeout(noMovesTimerRef.current);
+    const timer = noMovesTimerRef.current;
+    if (timer !== null && timer !== undefined) {
+      clearTimeout(timer);
       noMovesTimerRef.current = null;
     }
   }, [gameState.currentPlayer]);
@@ -577,9 +602,9 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
           for (let j = 0; j < tempRemainingDice.length; j++) {
             if (
               i !== j &&
-              tempRemainingDice[i] !== undefined &&
-              tempRemainingDice[j] !== undefined &&
-              tempRemainingDice[i] + tempRemainingDice[j] === matchingMove.die
+              tempRemainingDice?.[i] !== undefined &&
+              tempRemainingDice?.[j] !== undefined &&
+              tempRemainingDice[i]! + tempRemainingDice[j]! === matchingMove.die
             ) {
               // Remove the higher index first to avoid reindexing issues
               const first = Math.max(i, j);
@@ -713,63 +738,90 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   const handlePointClick = useCallback((clickedIndex: number) => {
     debugLog("Point clicked", { clickedIndex, currentSelected: selectedPointIndex, currentPlayer: gameState.currentPlayer });
 
-    const pointData = clickedIndex !== BAR_POSITION ? gameState.board[clickedIndex] : null;
     const isCurrentPlayerBarNonEmpty = gameState.bar[gameState.currentPlayer] > 0;
-    const canBearOff = BackgammonRules.canBearOff(gameState.board, gameState.bar, gameState.currentPlayer);
-    const isInHomeBoard = BackgammonRules.isInHomeBoard(clickedIndex, gameState.currentPlayer);
+    const pointData = clickedIndex !== BAR_POSITION ? gameState.board[clickedIndex] : null;
+    const availableMoves = BackgammonRules.getAvailableMoves(gameState); // Get once
 
-    // --- BAR RE-ENTRY LOGIC (unchanged) ---
+    // === Scenario 1: Player's piece is on the BAR ===
     if (isCurrentPlayerBarNonEmpty) {
-      if (clickedIndex === BAR_POSITION) {
-        if (selectedPointIndex === BAR_POSITION) {
-          setSelectedPointIndex(null);
-          debugLog("Deselected BAR by clicking it again", { player: gameState.currentPlayer });
-        } else {
-          setSelectedPointIndex(BAR_POSITION);
-          debugLog("Selected BAR by clicking it", { player: gameState.currentPlayer });
+        if (clickedIndex === BAR_POSITION) { // Clicked the bar itself
+            setSelectedPointIndex(selectedPointIndex === BAR_POSITION ? null : BAR_POSITION);
+            // Simplified debugLog to avoid potential linter parsing issue with ternary operator
+            if (selectedPointIndex === BAR_POSITION) {
+                debugLog("Deselected BAR", { player: gameState.currentPlayer });
+            } else {
+                debugLog("Selected BAR", { player: gameState.currentPlayer });
+            }
+        } else { // Clicked a board point (destination for piece from bar)
+            // This logic assumes that if the bar is not empty and a board point is clicked, the intent is to move from the bar.
+            // It implies selectedPointIndex should ideally be BAR_POSITION or will be treated as such for the move.
+            if (selectedPointIndex === BAR_POSITION || gameState.bar[gameState.currentPlayer] > 0) {
+                 debugLog("Attempting move FROM BAR to board point", { from: BAR_POSITION, to: clickedIndex });
+                 handlePieceMove(BAR_POSITION, clickedIndex);
+            } else {
+                 // This case should ideally not be reached if bar is not empty but not selected, 
+                 // and a point is clicked without prior bar selection.
+                debugLog("Bar is not empty, but BAR not selected. Clicked a board point. Illegal?", { to: clickedIndex });
+                setIllegalMoveFeedback({ index: clickedIndex, timestamp: Date.now() });
+            }
         }
         return;
-      } else {
-        debugLog("Attempting move FROM BAR to board point", { from: BAR_POSITION, to: clickedIndex });
-        handlePieceMove(BAR_POSITION, clickedIndex);
+    }
+
+    // === Scenario 2: A piece is already selected (selectedPointIndex is not null) ===
+    if (selectedPointIndex !== null) {
+        if (clickedIndex === selectedPointIndex) { // Clicked the selected piece again
+            setSelectedPointIndex(null); // Deselect
+            debugLog("Deselected point by clicking it again", { index: clickedIndex });
+        } else { // Clicked a different point (potential destination)
+            debugLog("Attempting move/action from selected point to clicked target", { from: selectedPointIndex, to: clickedIndex });
+            handlePieceMove(selectedPointIndex, clickedIndex);
+        }
         return;
-      }
     }
 
-    // --- BEARING OFF LOGIC ---
-    if (canBearOff && isInHomeBoard) {
-      // User is clicking a home-board point while bearing off is possible
-      // Attempt to bear off from this point (if legal)
-      const availableMoves = BackgammonRules.getAvailableMoves(gameState);
-      const bearOffMove = availableMoves.find(move => move.from === clickedIndex && move.to === BEARING_OFF_POSITION);
-      if (bearOffMove) {
-        debugLog("Bearing off from clicked point", { from: clickedIndex });
-        handlePieceMove(clickedIndex, BEARING_OFF_POSITION);
-      } else {
-        debugLog("Illegal bear off attempt from point", { from: clickedIndex });
-        setIllegalMoveFeedback({ index: clickedIndex, timestamp: Date.now() });
-      }
-      return;
+    // === Scenario 3: No piece is selected yet (selectedPointIndex is null) ===
+    // Player is clicking a point to potentially select it as a source,
+    // or to directly bear off, or as a "smart move" destination.
+
+    // A. Try to select the clicked point if it's a valid source owned by the current player
+    if (pointData && pointData.player === gameState.currentPlayer && pointData.count > 0) {
+        const canMoveFromClickedPoint = availableMoves.some(move => move.from === clickedIndex);
+        if (canMoveFromClickedPoint) {
+            setSelectedPointIndex(clickedIndex);
+            debugLog("Selected source point", { index: clickedIndex });
+            return;
+        }
     }
 
-    // --- NORMAL MOVE LOGIC (destination-only click) ---
-    // Find all available moves to this destination
-    const availableMoves = BackgammonRules.getAvailableMoves(gameState);
-    const candidateMoves = availableMoves.filter(move => move.to === clickedIndex && move.from !== BAR_POSITION);
-    if (candidateMoves.length > 0) {
-      // Prefer a combined move (usesBothDice) if available
-      const combinedMove = candidateMoves.find(m => m.usesBothDice);
-      const move = combinedMove || candidateMoves[0];
-      if (move) {
-        debugLog("Auto-selecting and moving from", { from: move.from, to: move.to, usesBothDice: move.usesBothDice });
-        handlePieceMove(move.from, move.to);
-        return;
-      }
+    // B. If not selecting a source first, try "smart move" TO the clicked destination
+    const candidateMovesToDestination = availableMoves.filter(move => move.to === clickedIndex && move.from !== BAR_POSITION);
+    if (candidateMovesToDestination.length > 0) {
+        const combinedMove = candidateMovesToDestination.find(m => m.usesBothDice);
+        const move = combinedMove || candidateMovesToDestination[0];
+        if (move && typeof move.from === 'number') {
+            debugLog("Auto-moving to destination (smart move)", { from: move.from, to: move.to, usesBothDice: move.usesBothDice });
+            handlePieceMove(move.from, move.to);
+            return;
+        }
     }
 
-    // If no move is possible, provide feedback
-    debugLog("No legal move to clicked destination", { to: clickedIndex });
+    // C. Check for bearing off FROM the clicked point (if it's player's piece in home board)
+    const canBearOffSystem = BackgammonRules.canBearOff(gameState.board, gameState.bar, gameState.currentPlayer);
+    const isInHome = BackgammonRules.isInHomeBoard(clickedIndex, gameState.currentPlayer);
+    if (pointData && pointData.player === gameState.currentPlayer && pointData.count > 0 && canBearOffSystem && isInHome) {
+        const bearOffMove = availableMoves.find(move => move.from === clickedIndex && move.to === BEARING_OFF_POSITION);
+        if (bearOffMove) {
+            debugLog("Bearing off from clicked point directly", { from: clickedIndex });
+            handlePieceMove(clickedIndex, BEARING_OFF_POSITION);
+            return;
+        }
+    }
+
+    // D. If none of the above actions were taken
+    debugLog("No valid action for click on point (no piece selected, not a smart move, not bearOff)", { clickedIndex });
     setIllegalMoveFeedback({ index: clickedIndex, timestamp: Date.now() });
+
   }, [selectedPointIndex, gameState, handlePieceMove, setSelectedPointIndex, debugLog]);
 
   // Check for series winner
@@ -785,50 +837,32 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   useEffect(() => {
     if (!gameState.gameStarted) return;
 
+    let gameEnded = false;
+    let winner: Player | null = null;
+    let pointsEarned = 1;
+    let seriesWinner: Player | null = null;
+    let newScores = { ...scores };
+
     const checkWin = (player: Player) => {
-      // Player has won if all pieces are borne off
+      if (gameEnded) return;
       if (gameState.borneOff[player] === BackgammonRules.PIECES_PER_PLAYER) {
-        debugLog("Player won", player);
-        
-        // Determine opponent
         const opponent = player === 1 ? 2 : 1;
-        
-        // Check if Mulligan rules apply (opponent hasn't moved all pieces to home board)
         const opponentAllHome = BackgammonRules.allPiecesInHomeBoard(gameState.board, opponent);
-        
-        // Score calculation
-        const pointsEarned = !opponentAllHome ? 3 : 1;
-        
-        debugLog("Win details", { 
-          player, 
-          opponent, 
-          opponentAllHome, 
-          pointsEarned
-        });
-        
-        const newScores = { ...scores };
+        pointsEarned = !opponentAllHome ? 3 : 1;
         newScores[player] += pointsEarned;
-        setScores(newScores);
-        
-        setGameState(state => ({ ...state, gameStarted: false }));
-        
-        // Show end game notification
-        let message = `Player ${player} wins${pointsEarned === 3 ? ' a Backgammon' : ' a Gammon'}!`;
-        if (seriesWinner === 1) {
-          message += ` Player 1 wins the series ${newScores[1]}-${newScores[2]}!`;
-        } else if (seriesWinner === 2) {
-          message += ` Player 2 wins the series ${newScores[2]}-${newScores[1]}!`;
-        }
-        
-        alert(message);
-        
-        // Start new game
-        setGameNumber(prev => prev + 1);
+        seriesWinner = newScores[1] >= 3 ? 1 : newScores[2] >= 3 ? 2 : null;
+        winner = player;
+        gameEnded = true;
       }
     };
-
     checkWin(1);
     checkWin(2);
+    if (gameEnded && winner) {
+      setScores(newScores);
+      setGameState(state => ({ ...state, gameStarted: false }));
+      setEndGameInfo({ winner, points: pointsEarned, seriesWinner, scores: newScores });
+      setShowEndGameModal(true);
+    }
   }, [gameState.board, gameState.bar, gameState.borneOff, gameState.gameStarted]);
 
   // useEffect to reset selection and clear "no moves" feedback
@@ -836,8 +870,9 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     debugLog("Player/Dice changed, deselecting point & clearing feedback", { currentPlayer: gameState.currentPlayer, remainingDice: gameState.remainingDice });
     setSelectedPointIndex(null);
     setShowNoMovesFeedback(false); // Clear feedback on player/dice change
-    if (noMovesTimerRef.current) {
-      clearTimeout(noMovesTimerRef.current);
+    const timer = noMovesTimerRef.current;
+    if (timer !== null && timer !== undefined) {
+      clearTimeout(timer);
       noMovesTimerRef.current = null;
     }
   }, [gameState.currentPlayer, gameState.remainingDice]);
@@ -851,8 +886,9 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     if (!gameState.gameStarted || !gameState.diceRolled || gameState.isRolling || gameState.remainingDice.length === 0) {
        // Ensure feedback is off if conditions aren't met
        if (showNoMovesFeedback) setShowNoMovesFeedback(false);
-       if (noMovesTimerRef.current) {
-           clearTimeout(noMovesTimerRef.current);
+       const timer = noMovesTimerRef.current;
+       if (timer !== null && timer !== undefined) {
+           clearTimeout(timer);
            noMovesTimerRef.current = null;
        }
       return;
@@ -882,16 +918,17 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     } else {
         // Moves ARE available, ensure feedback is off and timer is cleared
         if (showNoMovesFeedback) setShowNoMovesFeedback(false);
-        if (noMovesTimerRef.current) {
+        const timer = noMovesTimerRef.current;
+        if (timer !== null && timer !== undefined) {
             console.log(`[Debug Stuck Check] Moves available. Clearing switch timer for player ${currentPlayer}.`);
-            clearTimeout(noMovesTimerRef.current);
+            clearTimeout(timer);
             noMovesTimerRef.current = null;
         }
     }
 
     // Cleanup function to clear timer if dependencies change before timeout
     return () => {
-        if (noMovesTimerRef.current) {
+        if (noMovesTimerRef.current !== null && noMovesTimerRef.current !== undefined) {
             // console.log(`[Debug Stuck Check] Cleanup: Clearing timer for player ${currentPlayer}.`);
             clearTimeout(noMovesTimerRef.current);
             noMovesTimerRef.current = null;
@@ -1363,7 +1400,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
         await new Promise(resolve => setTimeout(resolve, 100)); 
       }
 
-      if (screen.orientation && typeof screen.orientation.lock === 'function') {
+      if (typeof screen !== 'undefined' && screen.orientation && typeof (screen.orientation as any).lock === 'function') {
         // Revert to using 'as any' and remove @ts-expect-error
         await (screen.orientation as any).lock('landscape-primary');
         debugLog("Screen orientation lock requested for landscape-primary.", null);
@@ -1375,6 +1412,17 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
       debugLog("Error requesting fullscreen or locking orientation:", err);
       alert("For the best experience please rotate your device"); // Updated alert message
     }
+  };
+
+  // Replace setGameNumber(prev => prev + 1) with a function that only increments on continue
+  const handleContinueToNextGame = () => {
+    setGameNumber(prev => prev + 1);
+    setShowEndGameModal(false);
+    setGameState(state => ({ ...state, gameStarted: true }));
+  };
+  const handleExitToMenu = () => {
+    setShowEndGameModal(false);
+    router.push('/');
   };
 
   return (
@@ -1433,6 +1481,11 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
             <Button variant="ghost" size="sm" onClick={handleExit} className="text-white p-1 sm:p-2">
               <LogOut className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Exit</span>
             </Button>
+            {clientDebugEnabled && (
+              <Button variant="outline" size="sm" onClick={setupForBearingOff} className="text-yellow-400 border-yellow-400 hover:bg-yellow-400 hover:text-black p-1 sm:p-2">
+                Debug BearOff
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -1457,24 +1510,15 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
 
       {/* Conditional Rendering: START GAME Button or GAME BOARD */}
       {!gameState.gameStarted ? (
-        // Show Start Game Button Centered
-        <div className="flex-grow flex flex-col items-center justify-center p-4">
+        // Start screen
+        <div className="flex-grow flex flex-col items-center justify-center p-4 space-y-4">
+          <h2 className="text-white text-3xl font-bold">Backgammon</h2>
           <Button
-            size="lg"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-5 text-2xl font-bold shadow-lg animate-pulse" // Changed to blue
-            onClick={() => {
-              if (seriesWinner) {
-                alert(`The series is already over! Player ${seriesWinner} won.`);
-                return;
-              }
-              debugLog("Starting new game", null);
-              setGameState(state => ({ ...state, gameStarted: true }));
-            }}
+            onClick={handleStartGame}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
           >
-            START GAME
+            Start Game
           </Button>
-          {/* Optional: Add instructions or welcome message here */}
-           <p className="text-gray-400 mt-4 text-center">Let the games begin!</p> {/* Changed text */}
         </div>
       ) : (
         // Show Game Board Area
@@ -1664,6 +1708,11 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                      e.dataTransfer.dropEffect = 'move';
                    }
                  }}
+                 onClick={() => {
+                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK) {
+                     handlePointClick(BEARING_OFF_POSITION);
+                   }
+                 }}
                  onDrop={(e) => {
                    // Keep existing HTML5 drop logic for compatibility if needed
                    if (BackgammonRules.canBearOff(gameState.board, gameState.bar, BLACK) && gameState.currentPlayer === BLACK) {
@@ -1715,6 +1764,11 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
                    if (BackgammonRules.canBearOff(gameState.board, gameState.bar, WHITE) && gameState.currentPlayer === WHITE) {
                      e.preventDefault();
                      e.dataTransfer.dropEffect = 'move';
+                   }
+                 }}
+                 onClick={() => {
+                   if (BackgammonRules.canBearOff(gameState.board, gameState.bar, WHITE) && gameState.currentPlayer === WHITE) {
+                     handlePointClick(BEARING_OFF_POSITION);
                    }
                  }}
                  onDrop={(e) => {
@@ -1779,6 +1833,49 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
       )}
 
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} theme={theme} onThemeChange={setTheme} />
+
+      {showEndGameModal && endGameInfo && (
+        <Dialog open={showEndGameModal} onOpenChange={setShowEndGameModal}>
+          <DialogContent className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md rounded-3xl p-0 overflow-hidden shadow-2xl bg-gradient-to-b from-white to-blue-50 border-0">
+            <DialogHeader className="bg-blue-600 text-white p-6 rounded-t-3xl">
+              <DialogTitle className="text-3xl font-bold text-center mb-2 drop-shadow-lg">
+                🎉 Game Over!
+              </DialogTitle>
+              <div className="text-lg text-center font-semibold">
+                {endGameInfo.seriesWinner
+                  ? `🏆 Player ${endGameInfo.seriesWinner} wins the series!`
+                  : `Player ${endGameInfo.winner} wins${endGameInfo.points === 3 ? ' a Backgammon' : endGameInfo.points === 1 ? '' : ' a Gammon'}!`}
+              </div>
+              <div className="text-center mt-2 text-blue-100 text-sm">
+                Score: {endGameInfo.scores[1]} - {endGameInfo.scores[2]}
+              </div>
+            </DialogHeader>
+            <div className="p-8 flex flex-col items-center justify-center bg-white">
+              <div className="text-2xl font-bold text-blue-700 mb-4">
+                {endGameInfo.seriesWinner
+                  ? `Series Winner: Player ${endGameInfo.seriesWinner}`
+                  : `Winner: Player ${endGameInfo.winner}`}
+              </div>
+              <div className="flex gap-4 mt-2">
+                <Button
+                  className="rounded-full px-6 py-3 text-lg font-semibold bg-gray-200 hover:bg-gray-300 text-blue-700 shadow"
+                  onClick={handleExitToMenu}
+                >
+                  Exit to Main Menu
+                </Button>
+                {!endGameInfo.seriesWinner && (
+                  <Button
+                    className="rounded-full px-6 py-3 text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow"
+                    onClick={handleContinueToNextGame}
+                  >
+                    Continue to Game {gameNumber + 1} of 5
+                  </Button>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
