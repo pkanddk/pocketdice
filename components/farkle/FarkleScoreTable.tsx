@@ -300,13 +300,16 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                     const isActiveInputCell = isCurrentPlayerCell && isCurrentTurnCell && !gameOver; // Proper declaration for use
 
                     const cellScoreValue = turnScores[playerIdx]?.[turnIndex];
-                    const canEditCell = cellScoreValue !== null && cellScoreValue !== undefined && !isActiveInputCell && !gameOver;
 
-                    const renderAsLiveInput = isActiveInputCell && 
-                                              !showFinalRoundModal && 
-                                              (scoreEntryMode === 'manual' || 
-                                               (players[playerIdx] !== 'Computer') || 
-                                               (players[playerIdx] === 'Computer' && isComputerThinking));
+                    // Allow editing only when the table is explicitly in manual entry mode
+                    const canEditCell = scoreEntryMode === 'manual' &&
+                                        cellScoreValue !== null && cellScoreValue !== undefined &&
+                                        !isActiveInputCell && !gameOver;
+
+                    // Render the live numeric input only for the active cell when in manual mode
+                    const renderAsLiveInput = isActiveInputCell &&
+                                              !showFinalRoundModal &&
+                                              scoreEntryMode === 'manual';
 
                     // console.log(`Cell: P${playerIdx}, T${turnIndex} - isActiveInputCell: ${isActiveInputCell}, renderAsLiveInput: ${renderAsLiveInput}, player: ${players[playerIdx]}, scoreEntryMode: ${scoreEntryMode}`);
 
@@ -320,16 +323,17 @@ export const FarkleScoreTable: React.FC<FarkleScoreTableProps> = ({
                         }`}
                         onClick={() => {
                           if (canEditCell) {
+                            // Manual-mode editing of an existing score
                             onEditBankedScore(playerIdx, turnIndex);
-                          } else if (isActiveInputCell) {
-                            // Focus the input when clicking on the active cell
+                          } else if (renderAsLiveInput) {
+                            // Only try to focus the input if it actually exists
                             if (inputRef.current) {
                               inputRef.current.focus();
                             }
                           }
                         }}
-                        style={{ 
-                          cursor: isActiveInputCell || canEditCell ? 'pointer' : 'default'
+                        style={{
+                          cursor: (scoreEntryMode === 'manual' && (isActiveInputCell || canEditCell)) ? 'pointer' : 'default'
                         }}
                       >
                         {renderAsLiveInput ? (
