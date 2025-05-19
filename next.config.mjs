@@ -7,12 +7,21 @@ try {
   // ignore error
 }
 
-// Configure next-pwa - THIS BLOCK WAS MISSING/NEEDS TO BE CORRECTLY PLACED
+// Extend PWA configuration with an offline document fallback so that users get a friendly
+// message instead of the browser's generic "you're offline" screen when they navigate
+// to a route that has not yet been cached.
+//
+// The page component that will be shown lives at /app/offline/page.tsx and will be
+// prerendered & precached automatically by next-pwa on first load.
 const withPWA = pwa({
   dest: 'public', // Destination directory for the service worker files
-  register: true, // Register the service worker
-  skipWaiting: true, // Skip waiting for service worker activation
-  disable: process.env.NODE_ENV === 'development', // Disable PWA in development mode
+  register: true, // Register the service worker on the client
+  skipWaiting: true, // Activate the SW immediately after install
+  disable: process.env.NODE_ENV === 'development', // Keep dev mode un-affected
+  // Graceful offline fallback (works for App Router as well)
+  fallbacks: {
+    document: '/offline',
+  },
 });
 
 /** @type {import('next').NextConfig} */

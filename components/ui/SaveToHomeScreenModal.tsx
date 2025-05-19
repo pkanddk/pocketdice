@@ -71,7 +71,7 @@ const SaveToHomeScreenModal: React.FC<SaveToHomeScreenModalProps> = ({ isOpen, o
         
         <div className="text-gray-700 space-y-3 mb-6">
           <p className="text-lg">
-            For the best performance, offline play, and easy access, add Pocket Score to your Home Screen!
+            For the best Experience and offline play, add Pocket Score to your Home Screen!
           </p>
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <h3 className="font-semibold text-blue-600 mb-2 text-md">How to add:</h3>
