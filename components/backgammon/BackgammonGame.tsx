@@ -10,11 +10,21 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { SettingsDialog } from "./settings-dialog"
 import { Bar } from "./bar"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"; // Added import
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { getThemeStyle } from "@/utils/theme-styles"
 import { BoardPoint } from './board-point'
 import { BackgammonRules } from './game-logic'
 import { Player, BoardState, BarState, GameState, Move, DiceRoll, BorneOffState, PointState } from './types'
+import confetti from 'canvas-confetti'; // Added confetti import
 
 // Import the cultural backgrounds
 import { culturalBackgrounds } from "@/utils/cultural-backgrounds"
@@ -840,17 +850,29 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     let gameEnded = false;
     let winner: Player | null = null;
     let pointsEarned = 1;
-    let seriesWinner: Player | null = null;
+    let seriesWinnerValue: Player | null = null;
     let newScores = { ...scores };
 
     const checkWin = (player: Player) => {
       if (gameEnded) return;
       if (gameState.borneOff[player] === BackgammonRules.PIECES_PER_PLAYER) {
         const opponent = player === 1 ? 2 : 1;
-        const opponentAllHome = BackgammonRules.allPiecesInHomeBoard(gameState.board, opponent);
-        pointsEarned = !opponentAllHome ? 3 : 1;
+
+        const gammon = BackgammonRules.isGammon(gameState.borneOff, opponent);
+        // Assuming isMulligan effectively checks for the Backgammon condition (loser has pieces on bar or in winner's home)
+        // based on its implementation: !BackgammonRules.allPiecesInHomeBoard(gameState.board, opponent)
+        const backgammonWin = gammon && BackgammonRules.isMulligan(gameState.board, opponent);
+
+        if (backgammonWin) {
+          pointsEarned = 3; // Backgammon
+        } else if (gammon) {
+          pointsEarned = 2; // Gammon
+        } else {
+          pointsEarned = 1; // Regular win
+        }
+        
         newScores[player] += pointsEarned;
-        seriesWinner = newScores[1] >= 3 ? 1 : newScores[2] >= 3 ? 2 : null;
+        seriesWinnerValue = newScores[1] >= 3 ? 1 : newScores[2] >= 3 ? 2 : null;
         winner = player;
         gameEnded = true;
       }
@@ -860,10 +882,17 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     if (gameEnded && winner) {
       setScores(newScores);
       setGameState(state => ({ ...state, gameStarted: false }));
-      setEndGameInfo({ winner, points: pointsEarned, seriesWinner, scores: newScores });
+      setEndGameInfo({ winner, points: pointsEarned, seriesWinner: seriesWinnerValue, scores: newScores });
       setShowEndGameModal(true);
+      // Trigger confetti!
+      confetti({
+        particleCount: 150,
+        spread: 90,
+        origin: { y: 0.6 },
+        zIndex: 10000
+      });
     }
-  }, [gameState.board, gameState.bar, gameState.borneOff, gameState.gameStarted]);
+  }, [gameState.board, gameState.bar, gameState.borneOff, gameState.gameStarted, scores]);
 
   // useEffect to reset selection and clear "no moves" feedback
   useEffect(() => {
@@ -1192,7 +1221,7 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
     return () => {
       // Cleanup
       document.body.style.removeProperty('overflow');
-      document.body.style.removeProperty('height'); 
+      document.body.style.removeProperty('height');
       document.body.style.removeProperty('minHeight');
       document.documentElement.style.removeProperty('height');
       document.documentElement.style.removeProperty('overflow');
@@ -1418,7 +1447,25 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
   const handleContinueToNextGame = () => {
     setGameNumber(prev => prev + 1);
     setShowEndGameModal(false);
-    setGameState(state => ({ ...state, gameStarted: true }));
+
+    // Build a completely fresh game state.  We do **not** touch the score that
+    // is stored separately in `scores`; everything else should be reset.
+    setGameState({
+      board: BackgammonRules.getInitialBoard(),
+      bar: BackgammonRules.getInitialBarState(),
+      borneOff: BackgammonRules.getInitialBorneOffState(),
+      currentPlayer: BLACK, // Black (Player 1) always starts
+      dice: [],
+      remainingDice: [],
+      gameStarted: true,
+      mustUseAllDice: true,
+      isRolling: false,
+      diceRolled: false,
+    });
+
+    // Clear any selection / feedback that might linger from the previous game
+    setSelectedPointIndex(null);
+    setShowNoMovesFeedback(false);
   };
   const handleExitToMenu = () => {
     setShowEndGameModal(false);
@@ -1834,48 +1881,62 @@ export default function BackgammonGame({ playerNames = [] }: { playerNames?: str
 
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} theme={theme} onThemeChange={setTheme} />
 
-      {showEndGameModal && endGameInfo && (
-        <Dialog open={showEndGameModal} onOpenChange={setShowEndGameModal}>
-          <DialogContent className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md rounded-3xl p-0 overflow-hidden shadow-2xl bg-gradient-to-b from-white to-blue-50 border-0">
-            <DialogHeader className="bg-blue-600 text-white p-6 rounded-t-3xl">
-              <DialogTitle className="text-3xl font-bold text-center mb-2 drop-shadow-lg">
-                🎉 Game Over!
-              </DialogTitle>
-              <div className="text-lg text-center font-semibold">
-                {endGameInfo.seriesWinner
-                  ? `🏆 Player ${endGameInfo.seriesWinner} wins the series!`
-                  : `Player ${endGameInfo.winner} wins${endGameInfo.points === 3 ? ' a Backgammon' : endGameInfo.points === 1 ? '' : ' a Gammon'}!`}
-              </div>
-              <div className="text-center mt-2 text-blue-100 text-sm">
-                Score: {endGameInfo.scores[1]} - {endGameInfo.scores[2]}
-              </div>
-            </DialogHeader>
-            <div className="p-8 flex flex-col items-center justify-center bg-white">
-              <div className="text-2xl font-bold text-blue-700 mb-4">
-                {endGameInfo.seriesWinner
-                  ? `Series Winner: Player ${endGameInfo.seriesWinner}`
-                  : `Winner: Player ${endGameInfo.winner}`}
-              </div>
-              <div className="flex gap-4 mt-2">
+      {showEndGameModal && endGameInfo && (() => {
+        // Determine winner names
+        const winnerDisplayName = endGameInfo.winner && playerNames && playerNames[endGameInfo.winner - 1]
+          ? playerNames[endGameInfo.winner - 1]
+          : `Player ${endGameInfo.winner}`;
+        
+        const seriesWinnerDisplayName = endGameInfo.seriesWinner && playerNames && playerNames[endGameInfo.seriesWinner - 1]
+          ? playerNames[endGameInfo.seriesWinner - 1]
+          : `Player ${endGameInfo.seriesWinner}`;
+
+        const winTypeString = endGameInfo.points === 3 ? ' a Backgammon' : endGameInfo.points === 2 ? ' a Gammon' : '';
+
+        return (
+          <AlertDialog open={showEndGameModal} onOpenChange={setShowEndGameModal}>
+            {/* Ensure content is a flex column to manage header and footer correctly */}
+            <AlertDialogContent className="max-w-sm rounded-2xl shadow-2xl p-0 flex flex-col overflow-hidden"> {/* Changed to rounded-2xl, p-0, flex, flex-col, overflow-hidden */}
+              {/* Header: Centered with padding */}
+              <AlertDialogHeader className="text-center px-6 pt-8 pb-4 bg-gray-50"> {/* Added bg-gray-50 for slight visual separation if needed, more padding */}
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 mb-5">
+                  <Trophy className="h-8 w-8 text-blue-600" />
+                </div>
+                <AlertDialogTitle className="text-3xl font-bold text-gray-800 text-center"> {/* Added text-center directly */}
+                  Game Over!
+                </AlertDialogTitle>
+                {/* Description: Centered, with more readable text */}
+                <AlertDialogDescription className="text-lg text-gray-600 mt-4 text-center"> {/* Explicit text-center, increased top margin */}
+                  {endGameInfo.seriesWinner
+                    ? <>🏆 {seriesWinnerDisplayName} wins the series!</>
+                    : <>{winnerDisplayName} wins Game {gameNumber}{winTypeString}!</>}
+                  <br />
+                  <span className="font-semibold">Final Score: {endGameInfo.scores[1]} - {endGameInfo.scores[2]}</span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              
+              {/* Footer: Clear separation, centered buttons, part of the card */}
+              <AlertDialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-center gap-3 px-6 py-5 border-t border-gray-200 bg-white"> {/* Added border-t, bg-white, adjusted padding */}
                 <Button
-                  className="rounded-full px-6 py-3 text-lg font-semibold bg-gray-200 hover:bg-gray-300 text-blue-700 shadow"
+                  variant="outline"
                   onClick={handleExitToMenu}
+                  className="w-full sm:w-auto text-base py-2.5 rounded-lg" /* Ensure consistent rounding */
                 >
                   Exit to Main Menu
                 </Button>
                 {!endGameInfo.seriesWinner && (
                   <Button
-                    className="rounded-full px-6 py-3 text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow"
                     onClick={handleContinueToNextGame}
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-base py-2.5 rounded-lg" /* Ensure consistent rounding */
                   >
-                    Continue to Game {gameNumber + 1} of 5
+                    Continue to Game {gameNumber + 1}
                   </Button>
                 )}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        );
+      })()}
     </div>
   );
 }
