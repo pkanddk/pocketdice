@@ -22,6 +22,7 @@ const withPWA = pwa({
   fallbacks: {
     document: '/offline',
   },
+  cacheOnFrontendNav: true,
 });
 
 /** @type {import('next').NextConfig} */
