@@ -23,6 +23,7 @@ const withPWA = pwa({
     document: '/offline',
   },
   cacheOnFrontendNav: true,
+  aggressiveFrontEndNavCaching: true,
   extendDefaultRuntimeCaching: true,
   workboxOptions: {
     runtimeCaching: [
@@ -39,6 +40,14 @@ const withPWA = pwa({
         handler: 'NetworkFirst',
         options: {
           cacheName: 'next-data',
+          expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+        },
+      },
+      {
+        urlPattern: /\?__flight__=1.*$/,
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'next-flight',
           expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
         },
       },
