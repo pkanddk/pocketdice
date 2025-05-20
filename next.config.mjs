@@ -23,6 +23,27 @@ const withPWA = pwa({
     document: '/offline',
   },
   cacheOnFrontendNav: true,
+  extendDefaultRuntimeCaching: true,
+  workboxOptions: {
+    runtimeCaching: [
+      {
+        urlPattern: /^\/game\//,
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'game-pages',
+          expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 30 },
+        },
+      },
+      {
+        urlPattern: /^\/_next\/data\/.*\.json$/,
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'next-data',
+          expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+        },
+      },
+    ],
+  },
 });
 
 /** @type {import('next').NextConfig} */
